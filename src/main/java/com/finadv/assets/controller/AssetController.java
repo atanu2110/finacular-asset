@@ -5,9 +5,11 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.finadv.assets.entities.AssetInstrument;
+import com.finadv.assets.entities.AssetType;
 import com.finadv.assets.service.AssetService;
 
 /**
@@ -15,7 +17,7 @@ import com.finadv.assets.service.AssetService;
  *
  */
 @RestController
-@RequestMapping(value = "/api/v1")
+@RequestMapping(value = "/api/v1/assets")
 public class AssetController {
 	
 	
@@ -45,4 +47,22 @@ public class AssetController {
 
 	}
 	
+	/**
+	 * @param type
+	 * @return
+	 */
+	@GetMapping("/instruments/list")
+	public List<AssetInstrument> showAssetInstrumentsByType(@RequestParam int type) {
+		return assetService.getAssetDetailsByType(type);
+
+	}
+	
+	/**
+	 * @return asset types
+	 */
+	@GetMapping("/types")
+	public List<AssetType> getAssetsTypes() {
+		return assetService.getAllAssetTypes();
+
+	}
 }
