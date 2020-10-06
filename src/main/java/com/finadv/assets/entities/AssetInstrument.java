@@ -10,6 +10,9 @@ import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * @author atanu
  *
@@ -25,6 +28,7 @@ public class AssetInstrument {
 
 	@OneToOne(cascade = CascadeType.ALL)
 	@JoinColumn(name = "asset_type_id", referencedColumnName = "id")
+	@JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 	private AssetType assetTypeId;
 
 	@Column(name = "instrument_name")
