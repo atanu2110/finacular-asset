@@ -1,10 +1,4 @@
-package com.finadv.assets.service;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+package com.finadv.assets.service.impl;
 
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
@@ -13,6 +7,12 @@ import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.repository.AssetInstrumentRepository;
 import com.finadv.assets.repository.AssetTypeRepository;
 import com.finadv.assets.repository.UserAssetRepository;
+import com.finadv.assets.service.AssetService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AssetServiceImpl implements AssetService {
