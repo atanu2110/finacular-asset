@@ -6,6 +6,7 @@ import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
+import org.springframework.stereotype.Service;
 
 /**
  * @author atanu
@@ -22,7 +23,9 @@ public interface AssetService {
 	List<UserAssets> getUserAssetByUserId(long userId);
 	
 	void saveUserAssetsByUserId(UserAsset userAsset);
-	
+
+	void saveUserAssetsByInstrumentName(UserAsset userAsset, String instrumentName);
+
 	UserAssets updateUserAsset(UserAssets userAsset);
 	
 	void deleteUserAsset(long assetId);

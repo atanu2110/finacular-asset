@@ -7,6 +7,7 @@ import com.finadv.assets.entities.AssetInstrument;
 
 @Repository
 public interface AssetInstrumentRepository extends JpaRepository<AssetInstrument, Integer> {
+	AssetInstrument findByInstrumentName(String instrumentName);
 
 	/*
 	 * @Query("SELECT n FROM AssetInstrument n WHERE n.asset_type_id = ?1")

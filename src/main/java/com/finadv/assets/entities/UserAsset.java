@@ -1,11 +1,16 @@
 package com.finadv.assets.entities;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 /**
  * @author atanu
  *
  */
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserAsset {
 
 	private List<UserAssets> assets;

@@ -71,6 +71,17 @@ public class AssetServiceImpl implements AssetService {
 	}
 
 	@Override
+	public void saveUserAssetsByInstrumentName(UserAsset userAsset, String instrumentName) {
+		AssetInstrument mutualFund = assetInstrumentRepository.findByInstrumentName(instrumentName);
+		userAsset.getAssets().forEach(asset -> {
+			asset.setAssetInstrument(mutualFund);
+			asset.setAssetType(mutualFund.getAssetTypeId());
+		});
+		userAssetRepository.saveAll(userAsset.getAssets());
+
+	}
+
+	@Override
 	public UserAssets updateUserAsset(UserAssets userAsset) {
 		UserAssets userAssetsInDB = userAssetRepository.findById(userAsset.getId()).orElse(null);
 		if (userAssetsInDB != null) {

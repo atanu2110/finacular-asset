@@ -38,9 +38,9 @@ public class CAMSController {
      */
     @ApiOperation(value = "Parse, Extract and process the CAMS File for Mutual Fund Details of User")
     @PostMapping(path = "/extract-mf")
-    public ResponseEntity<String> extractMFDataFromCAMSFile(@RequestParam("cams_file") MultipartFile camsFile, @RequestParam("password") String password) {
+    public ResponseEntity<String> extractMFDataFromCAMSFile(@RequestParam("cams_file") MultipartFile camsFile, @RequestParam("password") String password, Long userId) {
         try {
-            return ResponseEntity.ok(camsService.extractMFData(camsFile, password));
+            return ResponseEntity.ok(camsService.extractMFData(camsFile, password, userId));
         } catch (IOException e) {
             log.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
