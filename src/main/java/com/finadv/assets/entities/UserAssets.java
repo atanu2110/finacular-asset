@@ -19,15 +19,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @Entity
 @Table(name = "user_assets")
-@JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class UserAssets {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private int id;
 
-	@Column(name = "institution_id")
-	private int institutionId;
+	@OneToOne
+	@JoinColumn(name = "institution_id", referencedColumnName = "id")
+	private Institution assetProvider;
 
 	@OneToOne
 	@JoinColumn(name = "asset_type_id", referencedColumnName = "id")
@@ -61,6 +62,9 @@ public class UserAssets {
 	@Column(name = "modified_at")
 	private LocalDateTime updatedAt;
 
+	@Column(name = "equity_debt_name")
+	private String equityDebtName;
+
 	public int getId() {
 		return id;
 	}
@@ -69,12 +73,12 @@ public class UserAssets {
 		this.id = id;
 	}
 
-	public int getInstitutionId() {
-		return institutionId;
+	public Institution getAssetProvider() {
+		return assetProvider;
 	}
 
-	public void setInstitutionId(int institutionId) {
-		this.institutionId = institutionId;
+	public void setAssetProvider(Institution assetProvider) {
+		this.assetProvider = assetProvider;
 	}
 
 	public AssetType getAssetType() {
@@ -155,6 +159,14 @@ public class UserAssets {
 
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public String getEquityDebtName() {
+		return equityDebtName;
+	}
+
+	public void setEquityDebtName(String equityDebtName) {
+		this.equityDebtName = equityDebtName;
 	}
 
 }
