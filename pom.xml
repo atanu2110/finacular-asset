@@ -80,21 +80,38 @@
 			<version>2.0.3</version>
 			<scope>compile</scope>
 		</dependency>
-		
-		
-		
+
+
+
 		<dependency>
-    <groupId>org.springframework</groupId>
-    <artifactId>spring-orm</artifactId>        
-</dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+		</dependency>
+
+	<dependency>
+		<groupId>org.seleniumhq.selenium</groupId>
+		<artifactId>htmlunit-driver</artifactId>
+	</dependency>
+	 <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-chrome-driver</artifactId>
+        </dependency>
+		<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 <dependency>
-    <groupId>org.hibernate</groupId>
-    <artifactId>hibernate-entitymanager</artifactId>            
+    <groupId>com.google.guava</groupId>
+    <artifactId>guava</artifactId>
+    <version>30.0-jre</version>
 </dependency>
-<dependency>
-    <groupId>mysql</groupId>
-    <artifactId>mysql-connector-java</artifactId> 
- </dependency>
+		
+
 
 	</dependencies>
 

@@ -7,12 +7,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.finadv.assets.entities.CAMSEmail;
 import com.finadv.assets.service.CAMSService;
+import com.finadv.assets.service.SeleniumService;
 
 /**
  * @author atanu
@@ -24,6 +27,9 @@ import com.finadv.assets.service.CAMSService;
 public class ExtractController {
 
 	private CAMSService camsService;
+	
+	@Autowired
+	private SeleniumService seleniumService;
 
 	@Autowired
 	public void setCamsService(CAMSService camsService) {
@@ -39,6 +45,13 @@ public class ExtractController {
 			// log.error(e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
+	}
+	
+	@PostMapping(path = "/camsonline/email")
+	public ResponseEntity<String> triggerCAMSEmail(@RequestBody CAMSEmail camsEmail) {
+		seleniumService.triggerCAMSEmail(camsEmail.getEmail(), camsEmail.getPassword());
+
+		return new ResponseEntity<>("Successfully Sent CAMS email !!", HttpStatus.OK);
 	}
 
 }

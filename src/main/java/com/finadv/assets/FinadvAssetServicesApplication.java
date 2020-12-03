@@ -15,6 +15,7 @@ public class FinadvAssetServicesApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(FinadvAssetServicesApplication.class, args);
+		
 	}
 
 	@Bean

@@ -3,6 +3,7 @@ package com.finadv.assets.service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -67,7 +68,28 @@ public class AssetServiceImpl implements AssetService {
 	@Override
 	public void saveUserAssetsByUserId(UserAsset userAsset) {
 
-		userAssetRepository.saveAll(userAsset.getAssets());
+		// If user already has the mutual fund then simply add the amount to exisitng
+		// one
+		List<UserAssets> assetList = userAssetRepository.findUserAssetByUserId(userAsset.getUserId());
+		for (UserAssets userAssets : userAsset.getAssets()) {
+			if (userAssets.getAssetInstrument().getId() == 8 && assetList.size() > 0) {
+				UserAssets assetInDB = assetList.stream()
+						.filter(x -> StringUtils.isNotEmpty(x.getEquityDebtName())
+								&& x.getEquityDebtName().equalsIgnoreCase(userAssets.getEquityDebtName()))
+						.findFirst().orElse(null);
+				if (assetInDB != null) {
+					assetInDB.setAmount(assetInDB.getAmount() + userAssets.getAmount());
+					updateUserAsset(assetInDB);
+				} else {
+					userAssetRepository.save(userAssets);
+				}
+
+			} else {
+				userAssetRepository.save(userAssets);
+			}
+		}
+
+		// userAssetRepository.saveAll(userAsset.getAssets());
 	}
 
 	@Override
