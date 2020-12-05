@@ -47,9 +47,13 @@ public class ExtractController {
 		}
 	}
 	
+	/**
+	 * @param camsEmail in body
+	 * @return
+	 */
 	@PostMapping(path = "/camsonline/email")
 	public ResponseEntity<String> triggerCAMSEmail(@RequestBody CAMSEmail camsEmail) {
-		seleniumService.triggerCAMSEmail(camsEmail.getEmail(), camsEmail.getPassword());
+		seleniumService.triggerCAMSEmail(camsEmail.getEmail(), camsEmail.getUserId());
 
 		return new ResponseEntity<>("Successfully Sent CAMS email !!", HttpStatus.OK);
 	}

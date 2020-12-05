@@ -8,7 +8,7 @@ public class CAMSEmail {
 
 	private String email;
 
-	private String password;
+	private long userId;
 
 	public String getEmail() {
 		return email;
@@ -18,12 +18,12 @@ public class CAMSEmail {
 		this.email = email;
 	}
 
-	public String getPassword() {
-		return password;
+	public long getUserId() {
+		return userId;
 	}
 
-	public void setPassword(String password) {
-		this.password = password;
+	public void setUserId(long userId) {
+		this.userId = userId;
 	}
 
 }
