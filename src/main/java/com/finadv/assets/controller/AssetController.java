@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.CurrentGrowthRequest;
+import com.finadv.assets.entities.CurrentGrowthResponse;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.service.AssetService;
@@ -116,6 +118,14 @@ public class AssetController {
 	public ResponseEntity<?> deleteUserAsset(@PathVariable long assetId) {
 		assetService.deleteUserAsset(assetId);
 		return new ResponseEntity<>("Asset deleted successfully !!", HttpStatus.OK);
+
+	}
+	
+	@PostMapping("/current/growth")
+	public ResponseEntity<?> getCurrentGrowth(@RequestBody CurrentGrowthRequest currentGrowth) {
+		List<CurrentGrowthResponse> currentGrowthResponseList = assetService.getCurrentGrowth(currentGrowth);
+
+		return new ResponseEntity<>(currentGrowthResponseList, HttpStatus.OK);
 
 	}
 }

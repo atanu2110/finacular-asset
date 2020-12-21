@@ -31,7 +31,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
-
 			</dependency>
 		<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-aws -->
 		<dependency>
@@ -39,7 +38,11 @@
 			<artifactId>spring-cloud-starter-aws</artifactId>
 			<version>2.2.5.RELEASE</version>
 		</dependency>
-	
+		<dependency>
+		<groupId>technology.tabula</groupId>
+		<artifactId>tabula</artifactId>
+		<version>1.0.4</version>
+	</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -128,6 +131,8 @@
 			<artifactId>aws-java-sdk-ses</artifactId>
 			<version>1.11.911</version>
 		</dependency>
+	
+		
 
 	</dependencies>
 

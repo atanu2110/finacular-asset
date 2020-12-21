@@ -1,5 +1,6 @@
 package com.finadv.assets.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,6 +10,9 @@ import org.springframework.stereotype.Service;
 
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.CurrentAsset;
+import com.finadv.assets.entities.CurrentGrowthRequest;
+import com.finadv.assets.entities.CurrentGrowthResponse;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.repository.AssetInstrumentRepository;
@@ -105,6 +109,41 @@ public class AssetServiceImpl implements AssetService {
 	@Override
 	public void deleteUserAsset(long assetId) {
 		userAssetRepository.deleteById((int) assetId);
+	}
+
+	@Override
+	public List<CurrentGrowthResponse> getCurrentGrowth(CurrentGrowthRequest currentGrowth) {
+		// Total asset amount
+		long totalAmount = currentGrowth.getCurrentAssetList().stream().map(item -> item.getAmount()).reduce(0l,
+				(a, b) -> a + b);
+
+		// Calculate Estimated return %
+		float totalWeight = 0;
+		for (CurrentAsset currentAsset : currentGrowth.getCurrentAssetList()) {
+			totalWeight += currentAsset.getExpectedReturn() * ((currentAsset.getAmount() * 100) / totalAmount);
+		}
+
+		float returnPercentage = totalWeight / 100;
+
+		List<CurrentGrowthResponse> currentAssetGrowth = new ArrayList<CurrentGrowthResponse>();
+		CurrentGrowthResponse year0CurrentGrowthResponse = new CurrentGrowthResponse();
+		year0CurrentGrowthResponse.setAge(currentGrowth.getAge());
+		year0CurrentGrowthResponse.setAmount(totalAmount + currentGrowth.getIncome());
+		currentAssetGrowth.add(year0CurrentGrowthResponse);
+
+		// Calculate CI
+		long amountOnYear = totalAmount;
+		long incomeYOY = currentGrowth.getIncome();
+
+		for (int i = 1; i <= 10; i++) {
+			amountOnYear = (long) (amountOnYear + (amountOnYear * (returnPercentage / 100)));
+			incomeYOY = incomeYOY + ((incomeYOY * 10) / 100);
+			CurrentGrowthResponse currentGrowthResponse = new CurrentGrowthResponse();
+			currentGrowthResponse.setAge(currentGrowth.getAge() + i);
+			currentGrowthResponse.setAmount(amountOnYear + incomeYOY);
+			currentAssetGrowth.add(currentGrowthResponse);
+		}
+		return currentAssetGrowth;
 	}
 
 }

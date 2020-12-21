@@ -4,6 +4,8 @@ import java.util.List;
 
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.CurrentGrowthRequest;
+import com.finadv.assets.entities.CurrentGrowthResponse;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 
@@ -26,4 +28,6 @@ public interface AssetService {
 	UserAssets updateUserAsset(UserAssets userAsset);
 	
 	void deleteUserAsset(long assetId);
+	
+	List<CurrentGrowthResponse> getCurrentGrowth(CurrentGrowthRequest currentGrowth);
 }
