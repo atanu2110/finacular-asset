@@ -1,7 +1,11 @@
 package com.finadv.assets.service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -14,9 +18,11 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring5.SpringTemplateEngine;
 
 import com.finadv.assets.entities.CAMSEmailDB;
 import com.finadv.assets.repository.CAMSEmailRepository;
@@ -39,6 +45,9 @@ public class SeleniumService {
 	
 	@Autowired
 	private JavaMailSender javaMailSender;
+	
+	 @Autowired
+		private SpringTemplateEngine templateEngine;
 	
 	@Autowired
 	public void setCamsEmailRepository(CAMSEmailRepository camsEmailRepository) {
@@ -159,14 +168,32 @@ public class SeleniumService {
 	
 	
 	private void sendEmail(String email, String password) {
+		/*
+		 * SimpleMailMessage msg = new SimpleMailMessage(); msg.setTo(email);
+		 * msg.setFrom("noreply@finacular.in");
+		 * msg.setSubject("CAMS generated successfully ");
+		 * msg.setText("Your CAMS PDF password is :  " + password);
+		 */ 
+		MimeMessage message = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper;
+		try {
+			helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+					StandardCharsets.UTF_8.name());
 
-		SimpleMailMessage msg = new SimpleMailMessage();
-		msg.setTo(email);
-		msg.setFrom("noreply@finacular.in");
-		msg.setSubject("CAMS generated successfully ");
-		msg.setText("Your CAMS PDF password is :  " + password);
+			Context context = new Context();
+			context.setVariable("name", "User");
+			context.setVariable("password", password);
 
-		javaMailSender.send(msg);
+			String html = templateEngine.process("cams_email.html", context);
+			helper.setTo(email);
+			helper.setText(html, true);
+			helper.setSubject("CAMS generated successfully ");
+			helper.setFrom("noreply@finacular.in");
+		} catch (MessagingException e) {
+			LOG.error(e.getMessage());
+		}
+
+		javaMailSender.send(message);
 
 	}
 

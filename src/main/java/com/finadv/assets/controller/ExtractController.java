@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.finadv.assets.entities.CAMSEmail;
+import com.finadv.assets.entities.NSDLReponse;
 import com.finadv.assets.service.CAMSService;
+import com.finadv.assets.service.NSDLService;
 import com.finadv.assets.service.SeleniumService;
 
 /**
@@ -30,6 +32,8 @@ public class ExtractController {
 	
 	@Autowired
 	private SeleniumService seleniumService;
+	@Autowired
+	private NSDLService nsdlService;
 
 	@Autowired
 	public void setCamsService(CAMSService camsService) {
@@ -58,4 +62,10 @@ public class ExtractController {
 		return new ResponseEntity<>("Successfully Sent CAMS email !!", HttpStatus.OK);
 	}
 
+	
+	@PostMapping(path = "/nsdl")
+	public ResponseEntity<NSDLReponse> extractFromNSDL(@RequestParam("nsdlFile") MultipartFile nsdlFile,
+			@RequestParam("password") String password, @RequestParam("userId") Long userId) {
+		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId));
+	}
 }
