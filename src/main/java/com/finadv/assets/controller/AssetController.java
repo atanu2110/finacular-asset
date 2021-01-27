@@ -16,12 +16,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.finadv.assets.dto.UserAssetDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
 import com.finadv.assets.entities.CurrentGrowthRequest;
-import com.finadv.assets.entities.CurrentGrowthResponse;
+import com.finadv.assets.entities.CurrentGrowthResponseList;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
+import com.finadv.assets.entities.UserIncomeExpenseDetail;
 import com.finadv.assets.service.AssetService;
 
 /**
@@ -81,13 +83,8 @@ public class AssetController {
 	 * @return user assets
 	 */
 	@GetMapping("/{userId}")
-	public ResponseEntity<UserAsset> getUserAssetsById(@PathVariable long userId) {
-
-		UserAsset userAsset = new UserAsset();
-		List<UserAssets> assets = assetService.getUserAssetByUserId(userId);
-		userAsset.setAssets(assets);
-		userAsset.setUserId(userId);
-		return new ResponseEntity<>(userAsset, HttpStatus.OK);
+	public ResponseEntity<UserAssetDto> getUserAssetsById(@PathVariable long userId) {
+		return new ResponseEntity<>(assetService.getUserAssetByUserId(userId), HttpStatus.OK);
 	}
 
 	/**
@@ -120,12 +117,31 @@ public class AssetController {
 		return new ResponseEntity<>("Asset deleted successfully !!", HttpStatus.OK);
 
 	}
-	
+
 	@PostMapping("/current/growth")
 	public ResponseEntity<?> getCurrentGrowth(@RequestBody CurrentGrowthRequest currentGrowth) {
-		List<CurrentGrowthResponse> currentGrowthResponseList = assetService.getCurrentGrowth(currentGrowth);
+		CurrentGrowthResponseList currentGrowthResponseList = assetService.getCurrentGrowth(currentGrowth);
 
 		return new ResponseEntity<>(currentGrowthResponseList, HttpStatus.OK);
 
 	}
+
+	/**
+	 * @param userId
+	 * @return user income and expense details
+	 */
+	@GetMapping("/income/expense/{userId}")
+	public ResponseEntity<UserIncomeExpenseDetail> getUserIncomeExpenseById(@PathVariable long userId) {
+		UserIncomeExpenseDetail userIncomeExpenseDetail = assetService.getUserIncomeExpenseById(userId);
+		return new ResponseEntity<>(userIncomeExpenseDetail, HttpStatus.OK);
+
+	}
+
+	@PostMapping("/income/expense/{userId}")
+	public ResponseEntity<String> createUserIncomeExpense(
+			@RequestBody UserIncomeExpenseDetail userIncomeExpenseDetail) {
+		assetService.createUserIncomeExpense(userIncomeExpenseDetail);
+		return new ResponseEntity<>("User Income Expense successfully saved !!", HttpStatus.OK);
+	}
+
 }

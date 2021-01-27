@@ -10,6 +10,8 @@ public class CurrentGrowthRequest {
 
 	private long income;
 
+	private long expense;
+
 	private List<CurrentAsset> currentAssetList;
 
 	private int age;
@@ -36,6 +38,14 @@ public class CurrentGrowthRequest {
 
 	public void setAge(int age) {
 		this.age = age;
+	}
+
+	public long getExpense() {
+		return expense;
+	}
+
+	public void setExpense(long expense) {
+		this.expense = expense;
 	}
 
 }

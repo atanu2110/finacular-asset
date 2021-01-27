@@ -7,10 +7,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.io.RandomAccessFile;
+import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.pdfparser.PDFParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -71,9 +75,10 @@ public class CAMSServiceImpl implements CAMSService {
 		String temDirectory = "java.io.tmpdir";
 		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename());
 		camsFile.transferTo(tempCAMSFile);
-		PDFParser parser = new PDFParser(new RandomAccessFile(tempCAMSFile, READ_MODE), password);
+		RandomAccessRead rar = new RandomAccessFile(tempCAMSFile, READ_MODE);
+		PDFParser parser = new PDFParser(rar, password);
 
-		parser.parse();
+		parser.parse(); 
 		COSDocument cosDoc = parser.getDocument();
 		PDFTextStripper pdfStripper = new PDFLayoutTextStripper();
 		pdfStripper.setAddMoreFormatting(false);
@@ -83,6 +88,9 @@ public class CAMSServiceImpl implements CAMSService {
 		String parsedText = pdfStripper.getText(pdDoc);
 
 		List<String> linesList = parsedText.lines().collect(Collectors.toList());
+		
+		boolean summaryFlag = parsedText.contains("Loads  and  Fees") ? true : false;
+		
 		CAMS camsData = new CAMS();
 		HolderInfo holderInfo = new HolderInfo();
 		List<FundInfo> fundInfoList = new ArrayList<>();
@@ -93,7 +101,7 @@ public class CAMSServiceImpl implements CAMSService {
 				holderInfo.setName(linesList.get(folioIndex + 2).substring(0, 70).strip());
 			}
 
-			if (line.replaceAll("\\s", "").contains(FOLIO_NO)) {
+			if (line.replaceAll("\\s", "").contains(FOLIO_NO) && !summaryFlag) {
 				var folio = new FundInfo();
 				List<Transaction> transactionList = new ArrayList<>();
 				var folioNamePan = line.split(PAN);
@@ -107,20 +115,9 @@ public class CAMSServiceImpl implements CAMSService {
 								.map(schemeLine -> schemeLine.strip().replaceAll("\\s", ""))
 								.collect(Collectors.joining());
 						//var schemeAndAdvisor = scheme.split(ADVISOR_REGEX);
-						String[] splitScheme = scheme.split("-");
-						StringBuilder schemeBuilder = new StringBuilder();
-						if(splitScheme.length > 2) {
-							schemeBuilder.append(splitScheme[0]).append(" ").append(splitScheme[1]).append(" ").append(splitScheme[2]);			
-						}else {
-							String[] splitSchemeInner = splitScheme[1].split("Direct");
-							schemeBuilder.append(splitScheme[0]).append(" ").append(splitSchemeInner[0]);
-						}
-									
-						folio.setSchemeName(schemeBuilder.toString());
-						/*
-						 * if (schemeAndAdvisor[1].contains("ARN")) { folio.setSchemeType(REGULAR); }
-						 * else { folio.setSchemeType(DIRECT); }
-						 */
+						String[] splitScheme = scheme.split("-");				
+						folio.setSchemeName(scheme);
+						folio.setRtCode(splitScheme[0]);
 						folioIndex = txnOpenIndex + OPEN_TO_TXN_LINE_SKIP;
 						break;
 					}
@@ -166,10 +163,34 @@ public class CAMSServiceImpl implements CAMSService {
 					}
 				}
 				fundInfoList.add(folio);
-			}
-			camsData.setFundInfoList(fundInfoList);
-			camsData.setHolderInfo(holderInfo);
+			} 		
 		}
+		
+		if (summaryFlag) {
+			int indexOpt = IntStream.range(0, linesList.size())
+					.filter(i -> linesList.get(i).contains("Folio  No.")).findFirst().orElse(-1);;
+			for (int i = indexOpt + 2; i < linesList.size(); i++) {
+				FundInfo folio = new FundInfo();
+				if(linesList.get(i).trim().contains("Total"))
+					break;
+				 if(linesList.get(i).trim().matches("^[0-9].*$")) {
+					 String[] splitLine = linesList.get(i).trim().split("\\s+");
+						folio.setFolioName(splitLine[0]);			
+						folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
+						folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
+						folio.setClosingBalance(Double.valueOf(splitLine[splitLine.length - 5].replaceAll(",", "").trim()));
+						folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
+						
+						fundInfoList.add(folio);
+				 }
+				
+			}
+		}
+		
+		
+		
+		camsData.setFundInfoList(fundInfoList);
+		camsData.setHolderInfo(holderInfo);
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
 		for (FundInfo fundInfo : camsData.getFundInfoList()) {
 			if (fundInfo.getValuation() != 0) {
@@ -198,8 +219,12 @@ public class CAMSServiceImpl implements CAMSService {
 		UserAsset userAsset = new UserAsset();
 		userAsset.setUserId(userId);
 		userAsset.setAssets(userAssetList);
+	//temp comment	
 		assetService.saveUserAssetsByUserId(userAsset);
-
+		tempCAMSFile.delete();
+		rar.close();
+		cosDoc.close();
+		pdDoc.close();
 		return new ObjectMapper().writeValueAsString(camsData);
 
 	}
@@ -217,11 +242,13 @@ public class CAMSServiceImpl implements CAMSService {
 	private Transaction getTransactionDetails(String transactionDetail) {
 		Transaction transaction = new Transaction();
 		try {
+			if (transactionDetail.contains("***")) {
+				return transaction;
+			}
+			
 			var date = transactionDetail.substring(0, 11);
 			transaction.setDate(LocalDate.parse(date, DateTimeFormatter.ofPattern("dd-MMM-yyyy")));
-			if (transactionDetail.contains("***")) {
-				System.out.println(transactionDetail.substring(12));
-			} else if (transactionDetail.contains("(")) {
+			 if (transactionDetail.contains("(")) {
 				System.out.println(transactionDetail);
 			} else {
 				transaction.setTransactionDetail(transactionDetail.substring(12, 76).strip());

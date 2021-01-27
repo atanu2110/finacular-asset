@@ -12,6 +12,10 @@ public class NSDLEquity {
 
 	private long shares;
 
+	private double currentValue;
+
+	private float equityPercentage;
+
 	public String getIsin() {
 		return isin;
 	}
@@ -34,6 +38,22 @@ public class NSDLEquity {
 
 	public void setShares(long shares) {
 		this.shares = shares;
+	}
+
+	public double getCurrentValue() {
+		return currentValue;
+	}
+
+	public void setCurrentValue(double currentValue) {
+		this.currentValue = currentValue;
+	}
+
+	public float getEquityPercentage() {
+		return equityPercentage;
+	}
+
+	public void setEquityPercentage(float equityPercentage) {
+		this.equityPercentage = equityPercentage;
 	}
 
 }

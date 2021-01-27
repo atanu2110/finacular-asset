@@ -65,6 +65,12 @@ public class UserAssets {
 	@Column(name = "equity_debt_name")
 	private String equityDebtName;
 
+	@Column(name = "details")
+	private String details;
+
+	@Column(name = "code")
+	private String code;
+
 	public int getId() {
 		return id;
 	}
@@ -167,6 +173,22 @@ public class UserAssets {
 
 	public void setEquityDebtName(String equityDebtName) {
 		this.equityDebtName = equityDebtName;
+	}
+
+	public String getDetails() {
+		return details;
+	}
+
+	public void setDetails(String details) {
+		this.details = details;
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public void setCode(String code) {
+		this.code = code;
 	}
 
 }

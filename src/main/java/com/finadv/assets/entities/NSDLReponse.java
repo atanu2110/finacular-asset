@@ -16,6 +16,12 @@ public class NSDLReponse {
 
 	private List<NSDLEquity> nsdlEquities;
 
+	private List<NSDLValueTrend> nsdlValueTrend;
+
+	private List<NSDLMutualFund> nsdlMutualFunds;
+
+	private NSDLAssetAmount nsdlAssetAmount;
+
 	public String getHolderName() {
 		return holderName;
 	}
@@ -46,6 +52,30 @@ public class NSDLReponse {
 
 	public void setNsdlEquities(List<NSDLEquity> nsdlEquities) {
 		this.nsdlEquities = nsdlEquities;
+	}
+
+	public List<NSDLValueTrend> getNsdlValueTrend() {
+		return nsdlValueTrend;
+	}
+
+	public void setNsdlValueTrend(List<NSDLValueTrend> nsdlValueTrend) {
+		this.nsdlValueTrend = nsdlValueTrend;
+	}
+
+	public List<NSDLMutualFund> getNsdlMutualFunds() {
+		return nsdlMutualFunds;
+	}
+
+	public void setNsdlMutualFunds(List<NSDLMutualFund> nsdlMutualFunds) {
+		this.nsdlMutualFunds = nsdlMutualFunds;
+	}
+
+	public NSDLAssetAmount getNsdlAssetAmount() {
+		return nsdlAssetAmount;
+	}
+
+	public void setNsdlAssetAmount(NSDLAssetAmount nsdlAssetAmount) {
+		this.nsdlAssetAmount = nsdlAssetAmount;
 	}
 
 }

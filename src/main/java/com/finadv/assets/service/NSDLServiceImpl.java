@@ -11,8 +11,11 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.finadv.assets.entities.NSDLAssetAmount;
 import com.finadv.assets.entities.NSDLEquity;
+import com.finadv.assets.entities.NSDLMutualFund;
 import com.finadv.assets.entities.NSDLReponse;
+import com.finadv.assets.entities.NSDLValueTrend;
 
 /**
  * @author ATANU
@@ -26,7 +29,7 @@ public class NSDLServiceImpl implements NSDLService {
 		String temDirectory = "java.io.tmpdir";
 		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename());
 		PDDocument doc;
-		
+
 		NSDLReponse nsdlReponse = new NSDLReponse();
 		try {
 			nsdlFile.transferTo(tempNSDLFile);
@@ -35,6 +38,8 @@ public class NSDLServiceImpl implements NSDLService {
 			String text = new PDFTextStripper().getText(doc);
 			String lines[] = text.split("\\r?\\n");
 			List<NSDLEquity> nsdlEquities = new ArrayList<NSDLEquity>();
+			List<NSDLValueTrend> valuetrend = new ArrayList<NSDLValueTrend>();
+			List<NSDLMutualFund> mutualFunds = new ArrayList<NSDLMutualFund>();
 			int linecounter = 0;
 			for (String line : lines) {
 				if (line.toLowerCase().contains("statement for the period")) {
@@ -42,42 +47,149 @@ public class NSDLServiceImpl implements NSDLService {
 				}
 
 				if (line.toLowerCase().contains("grand total")) {
-					nsdlReponse.setAmount(Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
+					nsdlReponse.setAmount(
+							Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
 				}
 				if (line.contains("CAS ID")) {
 					nsdlReponse.setHolderName(lines[linecounter + 1]);
 				}
+				// Get portfolio distribution
+				if (line.contains("ASSET CLASS Value in ` %")) {
+					NSDLAssetAmount nsdlAssetAmount = new NSDLAssetAmount();
+					nsdlAssetAmount.setEquities(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setPreferenceShares(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setMutualFunds(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 3].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setCorporateBonds(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 4].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setMoneyMarketInstruments(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 5].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setSecuritisedInstruments(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 6].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setGovernmentSecurities(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 7].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setPostalSavingScheme(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 8].replaceAll(",", ""))))
+									.longValue());
+					nsdlAssetAmount.setMutualFundFolios(
+							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 9].replaceAll(",", ""))))
+									.longValue());
+
+					nsdlReponse.setNsdlAssetAmount(nsdlAssetAmount);
+				}
+				// Get portfolio value trend
+				if (line.trim().contains("Change") && lines[linecounter + 1].trim().contains("(%)")) {
+					for (int i = linecounter + 2; i < linecounter + 20; i++) {
+						if (!(lines[i].contains("+") || lines[i].contains("-") || lines[i].contains("NA NA")))
+							break;
+						String[] trendSplit = lines[i].trim().split(" ");
+						NSDLValueTrend nsdlValueTrend = new NSDLValueTrend();
+						nsdlValueTrend.setChangePercentage(trendSplit[trendSplit.length - 1]);
+						nsdlValueTrend.setChangeRs(trendSplit[trendSplit.length - 2]);
+						nsdlValueTrend.setPortfolioValue(trendSplit[trendSplit.length - 3]);
+						nsdlValueTrend.setMonth(trendSplit[0] + trendSplit[1]);
+
+						valuetrend.add(nsdlValueTrend);
+					}
+				}
 				// Get all Equity shares
 				String[] lineSplit = new String[0];
-				if (line.trim().matches("^(INE)[a-zA-Z0-9]{9,}$")) {
+				if (line.trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INE).*")) {
 					NSDLEquity nsdlEquity = new NSDLEquity();
-					nsdlEquity.setIsin(line.trim());
-					nsdlEquity.setStockSymbol(lines[linecounter + 1].trim());
-					for (int i = 1; i <= 5; i++) {
+					if(lines[linecounter + 1].contains("NSE")) {
+						nsdlEquity.setIsin(line.trim());
+						nsdlEquity.setStockSymbol(lines[linecounter + 1].trim());
+						for (int i = 1; i <= 5; i++) {
+							if (lines[linecounter + i + 1].trim().contains(".")
+									|| lines[linecounter + i + 1].trim().contains(",")) {
+								lineSplit = lines[linecounter + i + 1].split(" ");
+								break;
+							}
+
+						}
+
+						nsdlEquity.setShares(Long.parseLong(lineSplit[lineSplit.length - 3].replaceAll(",", "").trim()));
+						// current value
+						nsdlEquity.setCurrentValue(
+								Double.parseDouble(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+						
+					}else {
+						lineSplit = line.trim().split(" ");
+						nsdlEquity.setIsin(lineSplit[0]);
+						nsdlEquity.setStockSymbol(lineSplit[1]);
+						for (int i = 5; i <= 20; i++) {
+							if (lines[linecounter + i + 1].trim().matches("^(INE).*") || lines[linecounter + i + 1].trim().contains("Sub Total")) {
+								lineSplit = lines[linecounter + i ].split(" ");
+								break;
+							}
+
+						}
+						// current value
+						nsdlEquity.setCurrentValue(
+								Double.parseDouble(lineSplit[1].replaceAll(",", "").trim()));
+						// shares
+						nsdlEquity.setShares(Math.round(nsdlEquity.getCurrentValue() / Double.parseDouble(lineSplit[0].replaceAll(",", "").trim())));
+					}
+					// Get percentage share
+					float per = (float) (nsdlEquity.getCurrentValue() / nsdlReponse.getNsdlAssetAmount().getEquities())
+							* 100;
+					nsdlEquity.setEquityPercentage(per);
+					nsdlEquities.add(nsdlEquity);
+				}
+
+				// Get all mutual fund details
+
+				if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
+					NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
+					nsdlMutualFund.setIsin(line.trim());
+					int track = 0;
+					StringBuilder mfISINDescription = new StringBuilder();
+					for (int i = 1; i <= 7; i++) {
 						if (lines[linecounter + i + 1].trim().contains(".")
 								|| lines[linecounter + i + 1].trim().contains(",")) {
 							lineSplit = lines[linecounter + i + 1].split(" ");
+							track = i;
 							break;
 						}
 
 					}
-
-					nsdlEquity.setShares(Long.parseLong(lineSplit[lineSplit.length - 3].replaceAll(",", "").trim()));
-					nsdlEquities.add(nsdlEquity);
+					for (int j = linecounter + 2; j <= linecounter + track; j++) {
+						mfISINDescription.append(" ").append(lines[j]);
+					}
+					nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
+					nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
+					// Current value
+					nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
+					mutualFunds.add(nsdlMutualFund);
 				}
 
 				linecounter++;
 				// System.out.println(line);
 			}
-			
+
 			nsdlReponse.setNsdlEquities(nsdlEquities);
-			
+			nsdlReponse.setNsdlValueTrend(valuetrend);
+			nsdlReponse.setNsdlMutualFunds(mutualFunds);
 			doc.close();
 		} catch (IllegalStateException | IOException e) {
 			e.printStackTrace();
-		} 
+		}
 
 		return nsdlReponse;
+	}
+
+	private String stringSplit(String str) {
+		String[] strSplit = str.trim().split(" ");
+		return strSplit[strSplit.length - 2];
 	}
 
 }
