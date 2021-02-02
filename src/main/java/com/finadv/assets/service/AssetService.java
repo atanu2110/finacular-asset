@@ -25,7 +25,7 @@ public interface AssetService {
 	
 	UserAssetDto getUserAssetByUserId(long userId);
 	
-	void saveUserAssetsByUserId(UserAsset userAsset);
+	void saveUserAssetsByUserId(UserAsset userAsset, String source);
 	
 	UserAssets updateUserAsset(UserAssets userAsset);
 	

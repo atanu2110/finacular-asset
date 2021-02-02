@@ -71,6 +71,9 @@ public class UserAssets {
 	@Column(name = "code")
 	private String code;
 
+	@Column(name = "units")
+	private int units;
+
 	public int getId() {
 		return id;
 	}
@@ -189,6 +192,14 @@ public class UserAssets {
 
 	public void setCode(String code) {
 		this.code = code;
+	}
+
+	public int getUnits() {
+		return units;
+	}
+
+	public void setUnits(int units) {
+		this.units = units;
 	}
 
 }

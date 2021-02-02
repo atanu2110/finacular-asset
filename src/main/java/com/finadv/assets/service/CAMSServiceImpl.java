@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.io.RandomAccessFile;
 import org.apache.pdfbox.io.RandomAccessRead;
@@ -37,9 +38,9 @@ import io.github.jonathanlink.PDFLayoutTextStripper;
 
 @Service
 public class CAMSServiceImpl implements CAMSService {
-	
+
 	private AssetService assetService;
-	
+
 	@Autowired
 	public void setAssetService(AssetService assetService) {
 		this.assetService = assetService;
@@ -73,12 +74,13 @@ public class CAMSServiceImpl implements CAMSService {
 	@Override
 	public String extractMFData(MultipartFile camsFile, String password, Long userId) throws IOException {
 		String temDirectory = "java.io.tmpdir";
-		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename());
+		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename()
+				+ RandomStringUtils.random(4, true, true));
 		camsFile.transferTo(tempCAMSFile);
 		RandomAccessRead rar = new RandomAccessFile(tempCAMSFile, READ_MODE);
 		PDFParser parser = new PDFParser(rar, password);
 
-		parser.parse(); 
+		parser.parse();
 		COSDocument cosDoc = parser.getDocument();
 		PDFTextStripper pdfStripper = new PDFLayoutTextStripper();
 		pdfStripper.setAddMoreFormatting(false);
@@ -88,9 +90,9 @@ public class CAMSServiceImpl implements CAMSService {
 		String parsedText = pdfStripper.getText(pdDoc);
 
 		List<String> linesList = parsedText.lines().collect(Collectors.toList());
-		
+
 		boolean summaryFlag = parsedText.contains("Loads  and  Fees") ? true : false;
-		
+
 		CAMS camsData = new CAMS();
 		HolderInfo holderInfo = new HolderInfo();
 		List<FundInfo> fundInfoList = new ArrayList<>();
@@ -114,8 +116,8 @@ public class CAMSServiceImpl implements CAMSService {
 						scheme = linesList.subList(folioIndex + 1, txnOpenIndex).stream()
 								.map(schemeLine -> schemeLine.strip().replaceAll("\\s", ""))
 								.collect(Collectors.joining());
-						//var schemeAndAdvisor = scheme.split(ADVISOR_REGEX);
-						String[] splitScheme = scheme.split("-");				
+						// var schemeAndAdvisor = scheme.split(ADVISOR_REGEX);
+						String[] splitScheme = scheme.split("-");
 						folio.setSchemeName(scheme);
 						folio.setRtCode(splitScheme[0]);
 						folioIndex = txnOpenIndex + OPEN_TO_TXN_LINE_SKIP;
@@ -163,32 +165,31 @@ public class CAMSServiceImpl implements CAMSService {
 					}
 				}
 				fundInfoList.add(folio);
-			} 		
-		}
-		
-		if (summaryFlag) {
-			int indexOpt = IntStream.range(0, linesList.size())
-					.filter(i -> linesList.get(i).contains("Folio  No.")).findFirst().orElse(-1);;
-			for (int i = indexOpt + 2; i < linesList.size(); i++) {
-				FundInfo folio = new FundInfo();
-				if(linesList.get(i).trim().contains("Total"))
-					break;
-				 if(linesList.get(i).trim().matches("^[0-9].*$")) {
-					 String[] splitLine = linesList.get(i).trim().split("\\s+");
-						folio.setFolioName(splitLine[0]);			
-						folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
-						folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
-						folio.setClosingBalance(Double.valueOf(splitLine[splitLine.length - 5].replaceAll(",", "").trim()));
-						folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
-						
-						fundInfoList.add(folio);
-				 }
-				
 			}
 		}
-		
-		
-		
+
+		if (summaryFlag) {
+			int indexOpt = IntStream.range(0, linesList.size()).filter(i -> linesList.get(i).contains("Folio  No."))
+					.findFirst().orElse(-1);
+			;
+			for (int i = indexOpt + 2; i < linesList.size(); i++) {
+				FundInfo folio = new FundInfo();
+				if (linesList.get(i).trim().contains("Total"))
+					break;
+				if (linesList.get(i).trim().matches("^[0-9].*$")) {
+					String[] splitLine = linesList.get(i).trim().split("\\s+");
+					folio.setFolioName(splitLine[0]);
+					folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
+					folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
+					folio.setClosingBalance(Double.valueOf(splitLine[splitLine.length - 5].replaceAll(",", "").trim()));
+					folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
+
+					fundInfoList.add(folio);
+				}
+
+			}
+		}
+
 		camsData.setFundInfoList(fundInfoList);
 		camsData.setHolderInfo(holderInfo);
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
@@ -207,8 +208,10 @@ public class CAMSServiceImpl implements CAMSService {
 				AssetInstrument assetInstrument = new AssetInstrument();
 				assetInstrument.setId(8);
 				userAssets.setAssetInstrument(assetInstrument);
-				userAssets.setExpectedReturn(13);
+				userAssets.setExpectedReturn(12);
 				userAssets.setEquityDebtName(fundInfo.getSchemeName());
+				userAssets.setCode(fundInfo.getRtCode());
+				userAssets.setUnits((int) Math.round(fundInfo.getValuation() / fundInfo.getNav()));
 
 				userAssets.setUserId(userId);
 				userAssetList.add(userAssets);
@@ -219,8 +222,8 @@ public class CAMSServiceImpl implements CAMSService {
 		UserAsset userAsset = new UserAsset();
 		userAsset.setUserId(userId);
 		userAsset.setAssets(userAssetList);
-	//temp comment	
-		assetService.saveUserAssetsByUserId(userAsset);
+		// temp comment
+		assetService.saveUserAssetsByUserId(userAsset, "cams");
 		tempCAMSFile.delete();
 		rar.close();
 		cosDoc.close();
@@ -245,10 +248,10 @@ public class CAMSServiceImpl implements CAMSService {
 			if (transactionDetail.contains("***")) {
 				return transaction;
 			}
-			
+
 			var date = transactionDetail.substring(0, 11);
 			transaction.setDate(LocalDate.parse(date, DateTimeFormatter.ofPattern("dd-MMM-yyyy")));
-			 if (transactionDetail.contains("(")) {
+			if (transactionDetail.contains("(")) {
 				System.out.println(transactionDetail);
 			} else {
 				transaction.setTransactionDetail(transactionDetail.substring(12, 76).strip());

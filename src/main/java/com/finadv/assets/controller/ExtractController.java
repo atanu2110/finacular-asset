@@ -65,7 +65,7 @@ public class ExtractController {
 	
 	@PostMapping(path = "/nsdl")
 	public ResponseEntity<NSDLReponse> extractFromNSDL(@RequestParam("nsdlFile") MultipartFile nsdlFile,
-			@RequestParam("password") String password, @RequestParam("userId") Long userId) {
-		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId));
+			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) {
+		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId , source));
 	}
 }

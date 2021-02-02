@@ -12,7 +12,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.finadv.assets.dto.UserAssetDto;
 import com.finadv.assets.dto.UserAssetsDto;
@@ -22,6 +29,10 @@ import com.finadv.assets.entities.CurrentAsset;
 import com.finadv.assets.entities.CurrentGrowthRequest;
 import com.finadv.assets.entities.CurrentGrowthResponse;
 import com.finadv.assets.entities.CurrentGrowthResponseList;
+import com.finadv.assets.entities.FundDataList;
+import com.finadv.assets.entities.FundDataResponse;
+import com.finadv.assets.entities.StockData;
+import com.finadv.assets.entities.StockDataList;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.entities.UserIncomeExpenseDetail;
@@ -30,6 +41,7 @@ import com.finadv.assets.repository.AssetInstrumentRepository;
 import com.finadv.assets.repository.AssetTypeRepository;
 import com.finadv.assets.repository.UserAssetRepository;
 import com.finadv.assets.repository.UserIncomeExpenseRepository;
+import com.finadv.assets.util.AssetUtil;
 
 @Service
 public class AssetServiceImpl implements AssetService {
@@ -42,6 +54,12 @@ public class AssetServiceImpl implements AssetService {
 	private UserIncomeExpenseRepository userIncomeExpenseRepository;
 
 	private AssetMapper assetMapper;
+
+	@Autowired
+	RestTemplate restTemplate;
+
+	@Autowired
+	private AssetUtil assetUtil;
 
 	@Autowired
 	public void setUserAssetRepository(UserAssetRepository userAssetRepository) {
@@ -106,19 +124,22 @@ public class AssetServiceImpl implements AssetService {
 	}
 
 	@Override
-	public void saveUserAssetsByUserId(UserAsset userAsset) {
+	public void saveUserAssetsByUserId(UserAsset userAsset, String source) {
 
-		// If user already has the mutual fund then simply add the amount to exisitng
+		// If user already has the asset then simply add the amount to exisitng
 		// one
 		List<UserAssets> assetList = userAssetRepository.findUserAssetByUserId(userAsset.getUserId());
 		for (UserAssets userAssets : userAsset.getAssets()) {
-			if (userAssets.getAssetInstrument().getId() == 8 && assetList.size() > 0) {
-				UserAssets assetInDB = assetList.stream()
-						.filter(x -> StringUtils.isNotEmpty(x.getEquityDebtName())
-								&& x.getEquityDebtName().equalsIgnoreCase(userAssets.getEquityDebtName()))
+			if ((userAssets.getAssetInstrument().getId() == 8 || userAssets.getAssetInstrument().getId() == 7)
+					&& assetList.size() > 0) {
+				UserAssets assetInDB = assetList.stream().filter(
+						x -> StringUtils.isNotEmpty(x.getCode()) && x.getCode().equalsIgnoreCase(userAssets.getCode()))
 						.findFirst().orElse(null);
 				if (assetInDB != null) {
 					assetInDB.setAmount(assetInDB.getAmount() + userAssets.getAmount());
+					if ("cams".equalsIgnoreCase(source) || "nsdl".equalsIgnoreCase(source))
+						assetInDB.setAmount(assetInDB.getAmount());
+					assetInDB.setUnits(assetInDB.getUnits() + userAssets.getUnits() - (assetInDB.getUnits()));
 					updateUserAsset(assetInDB);
 				} else {
 					userAssetRepository.save(userAssets);
@@ -199,7 +220,6 @@ public class AssetServiceImpl implements AssetService {
 		userIncomeExpenseRepository.save(userIncomeExpenseDetail);
 	}
 
-	
 	private void calculateCurrentValueOfAssets(UserAssetDto userAssetDto) {
 		LOG.info("Get current values for assets!!");
 		userAssetDto.getAssets().forEach(a -> a.setCurrentValue(a.getAmount()));
@@ -210,30 +230,86 @@ public class AssetServiceImpl implements AssetService {
 		// "typeName": "equity" "instrumentName": "Mutual Fund",
 
 		// Get equity MF ISIN list
-		/*
-		 * List<String> equityMFISINList = userAssetDto.getAssets().stream() .filter(a
-		 * -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 8)
-		 * .map(UserAssetsDto::getCode).collect(Collectors.toList());
-		 */
-
+		String equityMFISINList = userAssetDto.getAssets().stream()
+				.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 8)
+				.map(UserAssetsDto::getCode).collect(Collectors.joining(","));
+		FundDataList fundDataList = getSchemeDetails(equityMFISINList);
 		// Get equity Stock ISIN list
-		/*
-		 * List<String> equityStockISINList = userAssetDto.getAssets().stream()
-		 * .filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId()
-		 * == 7) .map(UserAssetsDto::getCode).collect(Collectors.toList());
-		 */
+		String equityStockISINList = userAssetDto.getAssets().stream()
+				.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 7)
+				.map(UserAssetsDto::getCode).collect(Collectors.joining(","));
+		StockDataList stockDataList = getStockDetails(equityStockISINList);
 
 		for (UserAssetsDto uaDto : userAssetDto.getAssets()) {
-			/*
-			 * switch (uaDto.getAssetInstrument().getInstrumentName()) { case "savings":
-			 * getCurrentAmount(uaDto.getExpectedReturn(), uaDto.getAmount(), UserAssetsDto
-			 * uaDto); break; case "default": System.out.println("default fallback"); }
-			 */
-			if(uaDto.getAssetInstrument().getId() == 1) {
+			if (uaDto.getAssetInstrument().getId() == 1) {
 				getCurrentAmount(uaDto.getExpectedReturn(), uaDto.getAmount(), uaDto);
+			} else if (uaDto.getAssetInstrument().getId() == 8) {
+				FundDataResponse fdResponse = fundDataList.getResponse().stream()
+						.filter(x -> x.getData() != null && StringUtils.isNotEmpty(x.getData().getRtcode())
+								&& x.getData().getRtcode().equalsIgnoreCase(uaDto.getCode()))
+						.findFirst().orElse(null);
+				if (fdResponse != null) {
+					uaDto.setCurrentValue(fdResponse.getData().getNav() * uaDto.getUnits());
+					uaDto.setEquityDebtName(fdResponse.getData().getSchemenamecmapis());
+				}
+
+			} else if (uaDto.getAssetInstrument().getId() == 7) {
+				StockData stockData = stockDataList.getResponse().stream()
+						.filter(x -> x.getIsin() != null && x.getIsin().equals(uaDto.getCode())).findFirst()
+						.orElse(null);
+				if (stockData != null && stockData.getNav() != 0.0) {
+					uaDto.setCurrentValue(stockData.getNav() * uaDto.getUnits());
+					uaDto.setEquityDebtName(stockData.getCompanyname());
+				}
 			}
 		}
 
+	}
+
+	private FundDataList getSchemeDetails(String equityMFISINList) {
+		if (StringUtils.isNoneEmpty(equityMFISINList)) {
+			LOG.info("API call to GET details for mutual funds : " + equityMFISINList);
+			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getSchemeURL.append(assetUtil.getProperty("fund.schemes.url.path")).append("/");
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getSchemeURL.toString())
+					.queryParam("rtcode", equityMFISINList);
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<FundDataList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET, entity,
+					FundDataList.class);
+			LOG.info("API Response for GET mutual fund call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new FundDataList();
+	}
+
+	private StockDataList getStockDetails(String equityStockISINList) {
+		if (StringUtils.isNoneEmpty(equityStockISINList)) {
+			LOG.info("API call to GET details for stocks : " + equityStockISINList);
+			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getSchemeURL.append(assetUtil.getProperty("fund.equity.url.path")).append("/");
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getSchemeURL.toString()).queryParam("isin",
+					equityStockISINList);
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<StockDataList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET,
+					entity, StockDataList.class);
+			LOG.info("API Response for GET stocks call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new StockDataList();
 	}
 
 	private void getCurrentAmount(double rate, double principal, UserAssetsDto uaDto) {
@@ -243,6 +319,5 @@ public class AssetServiceImpl implements AssetService {
 		double multiplier = Math.pow(1.0 + (rate / 4), 4 * yrs);
 		uaDto.setCurrentValue(multiplier * principal);
 	}
-
 
 }

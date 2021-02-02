@@ -93,7 +93,7 @@ public class AssetController {
 	 */
 	@PostMapping("/{userId}")
 	public ResponseEntity<String> createUserAsset(@RequestBody UserAsset userAsset) {
-		assetService.saveUserAssetsByUserId(userAsset);
+		assetService.saveUserAssetsByUserId(userAsset, "api");
 		return new ResponseEntity<>("User Assets successfully saved !!", HttpStatus.OK);
 	}
 

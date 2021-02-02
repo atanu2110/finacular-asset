@@ -34,6 +34,10 @@ public class UserAssetsDto {
 
 	private String code;
 
+	private String holderName;
+	
+	private int units;
+
 	public int getAssetId() {
 		return assetId;
 	}
@@ -138,4 +142,21 @@ public class UserAssetsDto {
 		this.code = code;
 	}
 
+	public String getHolderName() {
+		return holderName;
+	}
+
+	public void setHolderName(String holderName) {
+		this.holderName = holderName;
+	}
+
+	public int getUnits() {
+		return units;
+	}
+
+	public void setUnits(int units) {
+		this.units = units;
+	}
+
+	
 }

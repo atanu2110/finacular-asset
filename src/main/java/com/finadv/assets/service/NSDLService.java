@@ -6,5 +6,5 @@ import com.finadv.assets.entities.NSDLReponse;
 
 public interface NSDLService {
 
-	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId);
+	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId , String source);
 }

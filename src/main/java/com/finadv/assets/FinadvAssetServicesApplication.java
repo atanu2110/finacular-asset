@@ -3,6 +3,7 @@ package com.finadv.assets;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
 import springfox.documentation.builders.RequestHandlerSelectors;
 import springfox.documentation.spi.DocumentationType;
@@ -15,13 +16,17 @@ public class FinadvAssetServicesApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(FinadvAssetServicesApplication.class, args);
-		
+
 	}
 
 	@Bean
-	   public Docket productApi() {
-	      return new Docket(DocumentationType.SWAGGER_2).select()
-	         .apis(RequestHandlerSelectors.basePackage("com.finadv.assets")).build();
-	   }
-	
+	public Docket productApi() {
+		return new Docket(DocumentationType.SWAGGER_2).select()
+				.apis(RequestHandlerSelectors.basePackage("com.finadv.assets")).build();
+	}
+
+	@Bean
+	public RestTemplate getRestTemplate() {
+		return new RestTemplate();
+	}
 }
