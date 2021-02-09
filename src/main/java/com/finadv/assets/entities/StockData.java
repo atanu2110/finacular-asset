@@ -20,6 +20,8 @@ public class StockData {
 
 	private float sales_cagr;
 
+	private String sector;
+
 	public String getCompanyname() {
 		return companyname;
 	}
@@ -74,6 +76,14 @@ public class StockData {
 
 	public void setSales_cagr(float sales_cagr) {
 		this.sales_cagr = sales_cagr;
+	}
+
+	public String getSector() {
+		return sector;
+	}
+
+	public void setSector(String sector) {
+		this.sector = sector;
 	}
 
 }

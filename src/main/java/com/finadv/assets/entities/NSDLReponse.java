@@ -1,6 +1,7 @@
 package com.finadv.assets.entities;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author atanu
@@ -21,6 +22,16 @@ public class NSDLReponse {
 	private List<NSDLMutualFund> nsdlMutualFunds;
 
 	private NSDLAssetAmount nsdlAssetAmount;
+
+	private List<MutualFundAnalysisResponse> mfaResponse;
+
+	private List<OverallStockData> overallStock;
+
+	private Map<String, Double> equitySector;
+
+	private Map<String, Double> mfSector;
+
+	private Map<String, Double> overallSector;
 
 	public String getHolderName() {
 		return holderName;
@@ -76,6 +87,46 @@ public class NSDLReponse {
 
 	public void setNsdlAssetAmount(NSDLAssetAmount nsdlAssetAmount) {
 		this.nsdlAssetAmount = nsdlAssetAmount;
+	}
+
+	public List<MutualFundAnalysisResponse> getMfaResponse() {
+		return mfaResponse;
+	}
+
+	public void setMfaResponse(List<MutualFundAnalysisResponse> mfaResponse) {
+		this.mfaResponse = mfaResponse;
+	}
+
+	public List<OverallStockData> getOverallStock() {
+		return overallStock;
+	}
+
+	public void setOverallStock(List<OverallStockData> overallStock) {
+		this.overallStock = overallStock;
+	}
+
+	public Map<String, Double> getEquitySector() {
+		return equitySector;
+	}
+
+	public void setEquitySector(Map<String, Double> equitySector) {
+		this.equitySector = equitySector;
+	}
+
+	public Map<String, Double> getMfSector() {
+		return mfSector;
+	}
+
+	public void setMfSector(Map<String, Double> mfSector) {
+		this.mfSector = mfSector;
+	}
+
+	public Map<String, Double> getOverallSector() {
+		return overallSector;
+	}
+
+	public void setOverallSector(Map<String, Double> overallSector) {
+		this.overallSector = overallSector;
 	}
 
 }

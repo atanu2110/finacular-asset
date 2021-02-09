@@ -4,26 +4,23 @@ package com.finadv.assets.entities;
  * @author atanu
  *
  */
-public class NSDLEquity {
-
-	private String isin;
+public class OverallStockData {
 
 	private String stockSymbol;
 
-	private long shares;
-
 	private double currentValue;
 
-	private float equityPercentage;
+	private float overallPercentage;
 
-	private String industry;
+	private String sector;
 
-	public String getIsin() {
-		return isin;
-	}
+	public OverallStockData(String stockSymbol, double currentValue, float overallPercentage, String sector) {
+		super();
 
-	public void setIsin(String isin) {
-		this.isin = isin;
+		this.stockSymbol = stockSymbol;
+		this.currentValue = currentValue;
+		this.overallPercentage = overallPercentage;
+		this.sector = sector;
 	}
 
 	public String getStockSymbol() {
@@ -32,14 +29,6 @@ public class NSDLEquity {
 
 	public void setStockSymbol(String stockSymbol) {
 		this.stockSymbol = stockSymbol;
-	}
-
-	public long getShares() {
-		return shares;
-	}
-
-	public void setShares(long shares) {
-		this.shares = shares;
 	}
 
 	public double getCurrentValue() {
@@ -51,19 +40,19 @@ public class NSDLEquity {
 	}
 
 	public float getEquityPercentage() {
-		return equityPercentage;
+		return overallPercentage;
 	}
 
 	public void setEquityPercentage(float equityPercentage) {
-		this.equityPercentage = equityPercentage;
+		this.overallPercentage = equityPercentage;
 	}
 
-	public String getIndustry() {
-		return industry;
+	public String getSector() {
+		return sector;
 	}
 
-	public void setIndustry(String industry) {
-		this.industry = industry;
+	public void setSector(String sector) {
+		this.sector = sector;
 	}
 
 }

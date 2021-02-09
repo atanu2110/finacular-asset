@@ -117,8 +117,6 @@ public class AssetServiceImpl implements AssetService {
 		userAsset.setUserId(userId);
 
 		UserAssetDto userAssetDto = assetMapper.convertToUserAssetDto(userAsset);
-		// TODO - Find all asset current value- Temp
-
 		calculateCurrentValueOfAssets(userAssetDto);
 		return userAssetDto;
 	}
@@ -138,14 +136,16 @@ public class AssetServiceImpl implements AssetService {
 				if (assetInDB != null) {
 					assetInDB.setAmount(assetInDB.getAmount() + userAssets.getAmount());
 					if ("cams".equalsIgnoreCase(source) || "nsdl".equalsIgnoreCase(source))
-						assetInDB.setAmount(assetInDB.getAmount());
-					assetInDB.setUnits(assetInDB.getUnits() + userAssets.getUnits() - (assetInDB.getUnits()));
+						assetInDB.setAmount(userAssets.getAmount());
+					assetInDB.setUnits(userAssets.getUnits());
 					updateUserAsset(assetInDB);
 				} else {
+					userAssets.setCreatedAt(LocalDateTime.now());
 					userAssetRepository.save(userAssets);
 				}
 
 			} else {
+				userAssets.setCreatedAt(LocalDateTime.now());
 				userAssetRepository.save(userAssets);
 			}
 		}
@@ -157,6 +157,7 @@ public class AssetServiceImpl implements AssetService {
 	public UserAssets updateUserAsset(UserAssets userAsset) {
 		UserAssets userAssetsInDB = userAssetRepository.findById(userAsset.getId()).orElse(null);
 		if (userAssetsInDB != null) {
+			userAsset.setUpdatedAt(LocalDateTime.now());
 			userAssetRepository.save(userAsset);
 			return userAsset;
 		}
@@ -239,9 +240,13 @@ public class AssetServiceImpl implements AssetService {
 				.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 7)
 				.map(UserAssetsDto::getCode).collect(Collectors.joining(","));
 		StockDataList stockDataList = getStockDetails(equityStockISINList);
-
+		// long[] instrumentIds = { 1, 2, 3, 4, 9, 10, 11 };
 		for (UserAssetsDto uaDto : userAssetDto.getAssets()) {
-			if (uaDto.getAssetInstrument().getId() == 1) {
+			// if (LongStream.of(instrumentIds).anyMatch(x -> x ==
+			// uaDto.getAssetInstrument().getId())) {
+
+			//if (uaDto.getAssetInstrument().getId() == 1 || uaDto.getAssetInstrument().getId() == 2) {
+			if (uaDto.getAssetInstrument().getId() == 2) {
 				getCurrentAmount(uaDto.getExpectedReturn(), uaDto.getAmount(), uaDto);
 			} else if (uaDto.getAssetInstrument().getId() == 8) {
 				FundDataResponse fdResponse = fundDataList.getResponse().stream()
@@ -261,7 +266,12 @@ public class AssetServiceImpl implements AssetService {
 					uaDto.setCurrentValue(stockData.getNav() * uaDto.getUnits());
 					uaDto.setEquityDebtName(stockData.getCompanyname());
 				}
-			}
+			} /*
+				 * else { Period period = Period.between(uaDto.getUpdatedAt() == null ?
+				 * uaDto.getCreatedAt().toLocalDate() : uaDto.getUpdatedAt().toLocalDate(),
+				 * LocalDateTime.now().toLocalDate()); uaDto.setCurrentValue( uaDto.getAmount()
+				 * + (uaDto.getAmount() * uaDto.getExpectedReturn() * period.getYears())); }
+				 */
 		}
 
 	}
@@ -270,7 +280,7 @@ public class AssetServiceImpl implements AssetService {
 		if (StringUtils.isNoneEmpty(equityMFISINList)) {
 			LOG.info("API call to GET details for mutual funds : " + equityMFISINList);
 			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
-			getSchemeURL.append(assetUtil.getProperty("fund.schemes.url.path")).append("/");
+			getSchemeURL.append(assetUtil.getProperty("fund.schemes.url.path"));
 
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
@@ -293,7 +303,7 @@ public class AssetServiceImpl implements AssetService {
 		if (StringUtils.isNoneEmpty(equityStockISINList)) {
 			LOG.info("API call to GET details for stocks : " + equityStockISINList);
 			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
-			getSchemeURL.append(assetUtil.getProperty("fund.equity.url.path")).append("/");
+			getSchemeURL.append(assetUtil.getProperty("fund.equity.url.path"));
 
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
@@ -313,7 +323,8 @@ public class AssetServiceImpl implements AssetService {
 	}
 
 	private void getCurrentAmount(double rate, double principal, UserAssetsDto uaDto) {
-		long days = ChronoUnit.DAYS.between(uaDto.getCreatedAt(), LocalDateTime.now());
+		long days = ChronoUnit.DAYS.between(uaDto.getUpdatedAt() == null ? uaDto.getCreatedAt() : uaDto.getUpdatedAt(),
+				LocalDateTime.now());
 		rate = rate / 100;
 		double yrs = (double) days / 365;
 		double multiplier = Math.pow(1.0 + (rate / 4), 4 * yrs);

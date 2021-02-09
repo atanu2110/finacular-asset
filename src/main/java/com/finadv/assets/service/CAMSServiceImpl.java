@@ -125,7 +125,7 @@ public class CAMSServiceImpl implements CAMSService {
 					}
 				}
 				// log.info("Got the Scheme : {}", scheme);
-				System.out.println("Got the Scheme : {}" + scheme);
+				//System.out.println("Got the Scheme : {}" + scheme);
 				for (int purchaseListIndex = folioIndex; purchaseListIndex < linesList.size(); purchaseListIndex++) {
 					if (linesList.get(purchaseListIndex).replaceAll("\\s", "").contains(CLOSING_UNIT_BALANCE)) {
 						folio.setClosingBalance(
@@ -252,7 +252,7 @@ public class CAMSServiceImpl implements CAMSService {
 			var date = transactionDetail.substring(0, 11);
 			transaction.setDate(LocalDate.parse(date, DateTimeFormatter.ofPattern("dd-MMM-yyyy")));
 			if (transactionDetail.contains("(")) {
-				System.out.println(transactionDetail);
+				//System.out.println(transactionDetail);
 			} else {
 				transaction.setTransactionDetail(transactionDetail.substring(12, 76).strip());
 				transaction.setAmount(parseAmount(transactionDetail.substring(76, 90)));
@@ -262,7 +262,7 @@ public class CAMSServiceImpl implements CAMSService {
 						Double.valueOf(transactionDetail.substring(110, 125).strip().replaceAll(AMOUNT_REGEX, "")));
 				transaction.setUnitBalance(
 						Double.valueOf(transactionDetail.substring(129).strip().replaceAll(AMOUNT_REGEX, "")));
-				System.out.println(transactionDetail.substring(12, 79));
+				//System.out.println(transactionDetail.substring(12, 79));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

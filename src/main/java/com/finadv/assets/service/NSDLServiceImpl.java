@@ -4,25 +4,52 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import com.finadv.assets.dto.UserAssetsDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.FundDataList;
 import com.finadv.assets.entities.Institution;
+import com.finadv.assets.entities.MutualFundAnalysis;
+import com.finadv.assets.entities.MutualFundAnalysisResponse;
+import com.finadv.assets.entities.MutualFundAnalysisResponseList;
+import com.finadv.assets.entities.MutualFundAnalysisScheme;
 import com.finadv.assets.entities.NSDLAssetAmount;
 import com.finadv.assets.entities.NSDLEquity;
 import com.finadv.assets.entities.NSDLMutualFund;
 import com.finadv.assets.entities.NSDLReponse;
 import com.finadv.assets.entities.NSDLValueTrend;
+import com.finadv.assets.entities.OverallStockData;
+import com.finadv.assets.entities.StockData;
+import com.finadv.assets.entities.StockDataList;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
+import com.finadv.assets.util.AssetUtil;
 
 /**
  * @author ATANU
@@ -30,21 +57,39 @@ import com.finadv.assets.entities.UserAssets;
  */
 @Service
 public class NSDLServiceImpl implements NSDLService {
+
+	private static final Logger LOG = LoggerFactory.getLogger(NSDLServiceImpl.class);
+
 	private AssetService assetService;
+
+	private AsyncService asyncService;
 
 	@Autowired
 	public void setAssetService(AssetService assetService) {
 		this.assetService = assetService;
 	}
 
+	@Autowired
+	public void setAsyncService(AsyncService asyncService) {
+		this.asyncService = asyncService;
+	}
+
+	@Autowired
+	RestTemplate restTemplate;
+
+	@Autowired
+	private AssetUtil assetUtil;
+
 	@Override
 	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId, String source) {
 		String temDirectory = "java.io.tmpdir";
-		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename());
+		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename()
+				+ RandomStringUtils.random(4, true, true));
 		PDDocument doc;
 
 		NSDLReponse nsdlReponse = new NSDLReponse();
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
+		String email = "";
 		try {
 			nsdlFile.transferTo(tempNSDLFile);
 
@@ -66,6 +111,10 @@ public class NSDLServiceImpl implements NSDLService {
 				}
 				if (line.contains("CAS ID")) {
 					nsdlReponse.setHolderName(lines[linecounter + 1]);
+				}
+				if (line.contains("REGISTERED EMAIL")) {
+					if (!lines[linecounter + 1].trim().equalsIgnoreCase("Not Registered"))
+						email = lines[linecounter + 1];
 				}
 				// Get portfolio distribution
 				if (line.contains("ASSET CLASS Value in ` %")) {
@@ -160,35 +209,55 @@ public class NSDLServiceImpl implements NSDLService {
 							* 100;
 					nsdlEquity.setEquityPercentage(per);
 					nsdlEquities.add(nsdlEquity);
-					
-					//Create asset
+
+					// Create asset
 					if ("portal".equalsIgnoreCase(source))
-							createAssetForEquities(nsdlEquity, userId, userAssetList, nsdlReponse.getHolderName());
+						createAssetForEquities(nsdlEquity, userId, userAssetList, nsdlReponse.getHolderName());
 				}
 
 				// Get all mutual fund details
 
-				if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
+				if ((line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INF).*"))
+						&& !line.trim().contains("INFRA")) {
 					NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
-					nsdlMutualFund.setIsin(line.trim());
-					int track = 0;
-					StringBuilder mfISINDescription = new StringBuilder();
-					for (int i = 1; i <= 7; i++) {
-						if (lines[linecounter + i + 1].trim().contains(".")
-								|| lines[linecounter + i + 1].trim().contains(",")) {
-							lineSplit = lines[linecounter + i + 1].split(" ");
-							track = i;
-							break;
-						}
+					if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
+						nsdlMutualFund.setIsin(line.trim());
+						int track = 0;
+						StringBuilder mfISINDescription = new StringBuilder();
+						for (int i = 1; i <= 7; i++) {
+							if (lines[linecounter + i + 1].trim().contains(".")
+									|| lines[linecounter + i + 1].trim().contains(",")) {
+								lineSplit = lines[linecounter + i + 1].split(" ");
+								track = i;
+								break;
+							}
 
+						}
+						for (int j = linecounter + 2; j <= linecounter + track; j++) {
+							mfISINDescription.append(" ").append(lines[j]);
+						}
+						nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
+						nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
+						// Current value
+						nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
+					} else {
+						lineSplit = line.trim().split(" ");
+						nsdlMutualFund.setIsin(lineSplit[0]);
+						nsdlMutualFund
+								.setUnits(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+						nsdlMutualFund.setIsinDescription(
+								String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
+						for (int i = 8; i <= 12; i++) {
+							if (lines[linecounter + i + 1].trim().contains("Total")) {
+								lineSplit = lines[linecounter + i + 1].split(" ");
+								nsdlMutualFund.setCurrentValue(Double.parseDouble(
+										lineSplit[lineSplit.length - 1].trim().replaceAll(",", "").trim()));
+								break;
+							}
+
+						}
 					}
-					for (int j = linecounter + 2; j <= linecounter + track; j++) {
-						mfISINDescription.append(" ").append(lines[j]);
-					}
-					nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
-					nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
-					// Current value
-					nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
+
 					mutualFunds.add(nsdlMutualFund);
 				}
 
@@ -196,6 +265,7 @@ public class NSDLServiceImpl implements NSDLService {
 				// System.out.println(line);
 			}
 
+			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
 			nsdlReponse.setNsdlEquities(nsdlEquities);
 			nsdlReponse.setNsdlValueTrend(valuetrend);
 			nsdlReponse.setNsdlMutualFunds(mutualFunds);
@@ -206,6 +276,8 @@ public class NSDLServiceImpl implements NSDLService {
 				userAsset.setUserId(userId);
 				userAsset.setAssets(userAssetList);
 				assetService.saveUserAssetsByUserId(userAsset, "nsdl");
+			} else {
+				getAnalysisData(nsdlReponse, email, nsdlFile.getOriginalFilename(), password);
 			}
 		} catch (IllegalStateException | IOException e) {
 			e.printStackTrace();
@@ -244,6 +316,198 @@ public class NSDLServiceImpl implements NSDLService {
 	private String stringSplit(String str) {
 		String[] strSplit = str.trim().split(" ");
 		return strSplit[strSplit.length - 2];
+	}
+
+	private void getAnalysisData(NSDLReponse nsdlReponse, String email, String fileName, String password) {
+		// Get mutual fund underlying stocks
+		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
+				nsdlReponse.getNsdlMutualFunds());
+		mutualFundAnalysisResponseList.getMfaResponse()
+				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
+		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());
+
+		// Get equity details and sectors
+		// Get equity Stock ISIN list
+		if (nsdlReponse.getNsdlEquities().size() > 0) {
+			String equityStockISINList = nsdlReponse.getNsdlEquities().stream().map(NSDLEquity::getIsin)
+					.collect(Collectors.joining(","));
+			StockDataList stockDataList = getStockDetails(equityStockISINList);
+			// Calculate sector details for equities
+			calculateSectorForEquities(nsdlReponse.getNsdlEquities(), stockDataList, nsdlReponse);
+		}
+
+		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
+				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(), 0, m.getIndustry()))
+				.collect(Collectors.toList());
+		if (nsdlReponse.getNsdlEquities().size() > 0) {
+			for (NSDLEquity equity : nsdlReponse.getNsdlEquities()) {
+				String[] companyNameSplit = equity.getStockSymbol().split("\\.");
+				/*
+				 * overallStock.stream().map(x -> { if
+				 * (x.getStockSymbol().toLowerCase().contains(companyNameSplit[0].toLowerCase())
+				 * ) { x.setCurrentValue(x.getCurrentValue() + equity.getCurrentValue()); return
+				 * x; } else { OverallStockData o = new
+				 * OverallStockData(equity.getStockSymbol(), equity.getCurrentValue(), 0,
+				 * "TODO"); overallStock.add(o); return o; }
+				 * 
+				 * });
+				 */
+
+				if (overallStock.stream()
+						.anyMatch(x -> x.getStockSymbol().toLowerCase().contains(companyNameSplit[0].toLowerCase()))) {
+					/*
+					 * overallStock.stream() .filter(x ->
+					 * x.getStockSymbol().toLowerCase().contains(companyNameSplit[0].toLowerCase()))
+					 * .findFirst() .peek(x -> x.setCurrentValue(x.getCurrentValue() +
+					 * equity.getCurrentValue())) .collect(Collectors.toList());
+					 */
+
+					int indexMatch = IntStream.range(0, overallStock.size()).filter(i -> overallStock.get(i)
+							.getStockSymbol().toLowerCase().contains(companyNameSplit[0].toLowerCase())).findFirst()
+							.orElse(-1);
+					overallStock.get(indexMatch)
+							.setCurrentValue(overallStock.get(indexMatch).getCurrentValue() + equity.getCurrentValue());
+					overallStock.get(indexMatch).setEquityPercentage(
+							(float) ((overallStock.get(indexMatch).getCurrentValue() / nsdlReponse.getAmount()) * 100));
+
+				} else {
+					OverallStockData o = new OverallStockData(equity.getStockSymbol(), equity.getCurrentValue(),
+							(float) ((equity.getCurrentValue() / nsdlReponse.getAmount()) * 100), equity.getIndustry());
+					overallStock.add(o);
+				}
+
+			}
+		}
+
+		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
+		nsdlReponse.setOverallStock(overallStock);
+
+		// Calculate mf sector details
+		if (nsdlReponse.getNsdlMutualFunds().size() > 0) {
+			Map<String, Double> mfMap = mutualFundAnalysisResponseList.getMfaResponse().stream()
+					.collect(Collectors.groupingBy(MutualFundAnalysisResponse::getIndustry,
+							Collectors.summingDouble(MutualFundAnalysisResponse::getAmount)));
+			//mfMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
+			
+			Map<String, Double> mfMapSorted = 	mfMap
+			        .entrySet()
+			        .stream()
+			        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			        .collect(
+			        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+			        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+			nsdlReponse.setMfSector(mfMapSorted);
+		}
+
+		// Calculate overall sector details
+		if (nsdlReponse.getOverallStock().size() > 0) {
+			Map<String, Double> oMap = nsdlReponse.getOverallStock().stream().collect(Collectors.groupingBy(
+					OverallStockData::getSector, Collectors.summingDouble(OverallStockData::getCurrentValue)));
+			//oMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
+			Map<String, Double> oMapSorted = 	oMap
+			        .entrySet()
+			        .stream()
+			        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			        .collect(
+			        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+			        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+			nsdlReponse.setOverallSector(oMapSorted);
+		}
+
+		// Save user data for future
+		asyncService.saveNSDLData(nsdlReponse.getHolderName(), email, fileName, password);
+	}
+
+	private MutualFundAnalysisResponseList getSchemeAnalysis(List<NSDLMutualFund> nsdlMutualFunds) {
+		if (!nsdlMutualFunds.isEmpty()) {
+			LOG.info("API call to POST mutual fund underlying stocks : " + nsdlMutualFunds.size());
+
+			StringBuilder getMFAnalysisURL = new StringBuilder(assetUtil.getProperty("mf.base.url"));
+			getMFAnalysisURL.append(assetUtil.getProperty("mf.analysis.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getMFAnalysisURL.toString())
+					.queryParam("source", "nsdl");
+			MutualFundAnalysis mutualFundAnalysis = new MutualFundAnalysis();
+			List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
+					.map(n -> new MutualFundAnalysisScheme(
+							Stream.of(n.getIsinDescription().split("-")).reduce((first, last) -> first).get(),
+							n.getCurrentValue()))
+					.collect(Collectors.toList());
+			mutualFundAnalysis.setMfSchemes(mfSchemes);
+			HttpEntity<?> entity = new HttpEntity<>(mutualFundAnalysis, headers);
+
+			ResponseEntity<MutualFundAnalysisResponseList> response = restTemplate
+					.postForEntity(builder.build().toUri(), entity, MutualFundAnalysisResponseList.class);
+
+			/*
+			 * for (MutualFundAnalysisResponse mfr : response.getBody().getMfaResponse()) {
+			 * System.out.println("symbol" + mfr.getSymbol() + mfr.getPercentage() +
+			 * " list : "); mfr.getSchemeNames().stream().forEach((c) ->
+			 * System.out.println(c)); }
+			 */
+
+			LOG.info("API Response for  POST mutual fund underlying stocks : " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new MutualFundAnalysisResponseList();
+	}
+
+	private StockDataList getStockDetails(String equityStockISINList) {
+		if (StringUtils.isNoneEmpty(equityStockISINList)) {
+			LOG.info("API call to GET details for stocks : " + equityStockISINList);
+			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getSchemeURL.append(assetUtil.getProperty("fund.equity.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getSchemeURL.toString()).queryParam("isin",
+					equityStockISINList);
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<StockDataList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET,
+					entity, StockDataList.class);
+			LOG.info("API Response for GET stocks call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new StockDataList();
+	}
+
+	private void calculateSectorForEquities(List<NSDLEquity> nsdlEquities, StockDataList stockDataList,
+			NSDLReponse nsdlReponse) {
+		LOG.info("Calculate equity sector composition");
+
+		for (NSDLEquity ne : nsdlEquities) {
+			StockData stockData = stockDataList.getResponse().stream()
+					.filter(x -> x.getIsin() != null && x.getIsin().equals(ne.getIsin())).findFirst().orElse(null);
+			if (stockData != null && stockData.getNav() != 0.0) {
+				ne.setStockSymbol(stockData.getCompanyname());
+				ne.setIndustry(stockData.getSector());
+			} else {
+				ne.setIndustry("OTHER");
+			}
+		}
+
+		Map<String, Double> equityMap = nsdlEquities.stream().collect(
+				Collectors.groupingBy(NSDLEquity::getIndustry, Collectors.summingDouble(NSDLEquity::getCurrentValue)));
+		//equityMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
+		
+		Map<String, Double> equityMapSorted = 	equityMap
+        .entrySet()
+        .stream()
+        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+        .collect(
+        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+		
+		nsdlReponse.setEquitySector(equityMapSorted);
 	}
 
 }
