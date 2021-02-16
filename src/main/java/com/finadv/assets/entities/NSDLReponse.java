@@ -33,6 +33,30 @@ public class NSDLReponse {
 
 	private Map<String, Double> overallSector;
 
+	private List<String> mfAnalyzed;
+
+	private List<String> mfNotAnalyzed;
+
+	private List<MutualFundGrowthAnalysis> mfGrowthAnalysis;
+
+	private PortfolioAnalysisReponse portfolioAnalysis;
+
+	public List<String> getMfAnalyzed() {
+		return mfAnalyzed;
+	}
+
+	public void setMfAnalyzed(List<String> mfAnalyzed) {
+		this.mfAnalyzed = mfAnalyzed;
+	}
+
+	public List<String> getMfNotAnalyzed() {
+		return mfNotAnalyzed;
+	}
+
+	public void setMfNotAnalyzed(List<String> mfNotAnalyzed) {
+		this.mfNotAnalyzed = mfNotAnalyzed;
+	}
+
 	public String getHolderName() {
 		return holderName;
 	}
@@ -127,6 +151,22 @@ public class NSDLReponse {
 
 	public void setOverallSector(Map<String, Double> overallSector) {
 		this.overallSector = overallSector;
+	}
+
+	public List<MutualFundGrowthAnalysis> getMfGrowthAnalysis() {
+		return mfGrowthAnalysis;
+	}
+
+	public void setMfGrowthAnalysis(List<MutualFundGrowthAnalysis> mfGrowthAnalysis) {
+		this.mfGrowthAnalysis = mfGrowthAnalysis;
+	}
+
+	public PortfolioAnalysisReponse getPortfolioAnalysis() {
+		return portfolioAnalysis;
+	}
+
+	public void setPortfolioAnalysis(PortfolioAnalysisReponse portfolioAnalysis) {
+		this.portfolioAnalysis = portfolioAnalysis;
 	}
 
 }

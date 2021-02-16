@@ -256,6 +256,8 @@ public class AssetServiceImpl implements AssetService {
 				if (fdResponse != null) {
 					uaDto.setCurrentValue(fdResponse.getData().getNav() * uaDto.getUnits());
 					uaDto.setEquityDebtName(fdResponse.getData().getSchemenamecmapis());
+					if (StringUtils.isNotEmpty(fdResponse.getData().getCategory()))
+						uaDto.setSchemeType(fdResponse.getData().getCategory());
 				}
 
 			} else if (uaDto.getAssetInstrument().getId() == 7) {

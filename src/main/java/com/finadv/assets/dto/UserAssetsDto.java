@@ -35,8 +35,10 @@ public class UserAssetsDto {
 	private String code;
 
 	private String holderName;
-	
+
 	private int units;
+
+	private String schemeType;
 
 	public int getAssetId() {
 		return assetId;
@@ -158,5 +160,12 @@ public class UserAssetsDto {
 		this.units = units;
 	}
 
-	
+	public String getSchemeType() {
+		return schemeType;
+	}
+
+	public void setSchemeType(String schemeType) {
+		this.schemeType = schemeType;
+	}
+
 }

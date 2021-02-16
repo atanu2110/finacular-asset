@@ -33,6 +33,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.finadv.assets.dto.UserAssetsDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.Equity;
 import com.finadv.assets.entities.FundDataList;
 import com.finadv.assets.entities.Institution;
 import com.finadv.assets.entities.MutualFundAnalysis;
@@ -45,6 +46,8 @@ import com.finadv.assets.entities.NSDLMutualFund;
 import com.finadv.assets.entities.NSDLReponse;
 import com.finadv.assets.entities.NSDLValueTrend;
 import com.finadv.assets.entities.OverallStockData;
+import com.finadv.assets.entities.PortfolioAnalysisReponse;
+import com.finadv.assets.entities.PortfolioAnalysisRequest;
 import com.finadv.assets.entities.StockData;
 import com.finadv.assets.entities.StockDataList;
 import com.finadv.assets.entities.UserAsset;
@@ -325,7 +328,9 @@ public class NSDLServiceImpl implements NSDLService {
 		mutualFundAnalysisResponseList.getMfaResponse()
 				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
 		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());
-
+		nsdlReponse.setMfAnalyzed(mutualFundAnalysisResponseList.getMfAnalyzed());
+		nsdlReponse.setMfNotAnalyzed(mutualFundAnalysisResponseList.getMfNotAnalyzed());
+		nsdlReponse.setMfGrowthAnalysis(mutualFundAnalysisResponseList.getMfGrowthAnalysis());
 		// Get equity details and sectors
 		// Get equity Stock ISIN list
 		if (nsdlReponse.getNsdlEquities().size() > 0) {
@@ -337,7 +342,8 @@ public class NSDLServiceImpl implements NSDLService {
 		}
 
 		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
-				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(), 0, m.getIndustry()))
+				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(),
+						(float) ((m.getAmount() / nsdlReponse.getAmount()) * 100), m.getIndustry()))
 				.collect(Collectors.toList());
 		if (nsdlReponse.getNsdlEquities().size() > 0) {
 			for (NSDLEquity equity : nsdlReponse.getNsdlEquities()) {
@@ -380,41 +386,62 @@ public class NSDLServiceImpl implements NSDLService {
 		}
 
 		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
+		// Testing
+		/*
+		 * double suma = overallStock.stream().filter(o -> o.getEquityPercentage() >
+		 * 1).mapToDouble(OverallStockData::getEquityPercentage).sum(); double sumb =
+		 * overallStock.stream().filter(o -> o.getEquityPercentage() <
+		 * 1).mapToDouble(OverallStockData::getEquityPercentage).sum();
+		 * System.out.println(suma + "*****************" + sumb);
+		 */
+
 		nsdlReponse.setOverallStock(overallStock);
 
 		// Calculate mf sector details
 		if (nsdlReponse.getNsdlMutualFunds().size() > 0) {
+			/*
+			 * Map<String, Double> mfMap =
+			 * mutualFundAnalysisResponseList.getMfaResponse().stream()
+			 * .collect(Collectors.groupingBy(MutualFundAnalysisResponse::getIndustry,
+			 * Collectors.summingDouble(MutualFundAnalysisResponse::getAmount)));
+			 */
 			Map<String, Double> mfMap = mutualFundAnalysisResponseList.getMfaResponse().stream()
-					.collect(Collectors.groupingBy(MutualFundAnalysisResponse::getIndustry,
+					.collect(Collectors.groupingBy(mf -> mf.getIndustry().toUpperCase(),
 							Collectors.summingDouble(MutualFundAnalysisResponse::getAmount)));
-			//mfMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
-			
-			Map<String, Double> mfMapSorted = 	mfMap
-			        .entrySet()
-			        .stream()
-			        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-			        .collect(
-			        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-			        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+			Map<String, Double> mfMapSorted = mfMap.entrySet().stream()
+					.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue,
+							LinkedHashMap::new));
 
 			nsdlReponse.setMfSector(mfMapSorted);
 		}
 
 		// Calculate overall sector details
 		if (nsdlReponse.getOverallStock().size() > 0) {
+			/*
+			 * Map<String, Double> oMap =
+			 * nsdlReponse.getOverallStock().stream().collect(Collectors.groupingBy(
+			 * OverallStockData::getSector,
+			 * Collectors.summingDouble(OverallStockData::getCurrentValue)));
+			 */
+
 			Map<String, Double> oMap = nsdlReponse.getOverallStock().stream().collect(Collectors.groupingBy(
-					OverallStockData::getSector, Collectors.summingDouble(OverallStockData::getCurrentValue)));
-			//oMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
-			Map<String, Double> oMapSorted = 	oMap
-			        .entrySet()
-			        .stream()
-			        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-			        .collect(
-			        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-			        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+					os -> os.getSector().toUpperCase(), Collectors.summingDouble(OverallStockData::getCurrentValue)));
+			// oMap.entrySet().stream().sorted(Map.Entry.<String,
+			// Double>comparingByValue());
+			Map<String, Double> oMapSorted = oMap.entrySet().stream()
+					.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue,
+							LinkedHashMap::new));
 			nsdlReponse.setOverallSector(oMapSorted);
 		}
 
+		// Get portfolio analysis
+		PortfolioAnalysisReponse  portfolioAnalysisReponse = getPortfolioAnalysis(nsdlReponse.getNsdlMutualFunds(),
+				nsdlReponse.getNsdlEquities());
+		nsdlReponse.setPortfolioAnalysis(portfolioAnalysisReponse);
+		
 		// Save user data for future
 		asyncService.saveNSDLData(nsdlReponse.getHolderName(), email, fileName, password);
 	}
@@ -434,7 +461,7 @@ public class NSDLServiceImpl implements NSDLService {
 			MutualFundAnalysis mutualFundAnalysis = new MutualFundAnalysis();
 			List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
 					.map(n -> new MutualFundAnalysisScheme(
-							Stream.of(n.getIsinDescription().split("-")).reduce((first, last) -> first).get(),
+							Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
 							n.getCurrentValue()))
 					.collect(Collectors.toList());
 			mutualFundAnalysis.setMfSchemes(mfSchemes);
@@ -495,19 +522,60 @@ public class NSDLServiceImpl implements NSDLService {
 			}
 		}
 
-		Map<String, Double> equityMap = nsdlEquities.stream().collect(
-				Collectors.groupingBy(NSDLEquity::getIndustry, Collectors.summingDouble(NSDLEquity::getCurrentValue)));
-		//equityMap.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue());
-		
-		Map<String, Double> equityMapSorted = 	equityMap
-        .entrySet()
-        .stream()
-        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-        .collect(
-        		Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-        			    (oldValue, newValue) -> oldValue, LinkedHashMap::new));
-		
+		/*
+		 * Map<String, Double> equityMap = nsdlEquities.stream().collect(
+		 * Collectors.groupingBy(NSDLEquity::getIndustry,
+		 * Collectors.summingDouble(NSDLEquity::getCurrentValue)));
+		 */
+
+		Map<String, Double> equityMap = nsdlEquities.stream().collect(Collectors.groupingBy(
+				ne -> ne.getIndustry().toUpperCase(), Collectors.summingDouble(NSDLEquity::getCurrentValue)));
+
+		Map<String, Double> equityMapSorted = equityMap.entrySet().stream()
+				.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).collect(Collectors.toMap(
+						Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
 		nsdlReponse.setEquitySector(equityMapSorted);
+	}
+
+	private PortfolioAnalysisReponse getPortfolioAnalysis(List<NSDLMutualFund> nsdlMutualFunds,
+			List<NSDLEquity> nsdlEquities) {
+		LOG.info("API call to POST Portfolio analysis FOR EQUITIES " + nsdlEquities.size() + " and for schemes : "
+				+ nsdlMutualFunds.size());
+
+		PortfolioAnalysisRequest portfolioAnalysisRequest = new PortfolioAnalysisRequest();
+
+		StringBuilder postPorfolioAnalysisURL = new StringBuilder(assetUtil.getProperty("portfolio.base.url"));
+		postPorfolioAnalysisURL.append(assetUtil.getProperty("portfolio.analysis.url.path"));
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+		UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(postPorfolioAnalysisURL.toString())
+				.queryParam("source", "nsdl");
+		MutualFundAnalysis mutualFundAnalysis = new MutualFundAnalysis();
+		List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
+				.map(n -> new MutualFundAnalysisScheme(
+						Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
+						n.getCurrentValue()))
+				.collect(Collectors.toList());
+
+		portfolioAnalysisRequest.setMfSchemes(mfSchemes);
+
+		List<Equity> equities = new ArrayList<Equity>();
+		if (nsdlEquities.size() > 0)
+			equities = nsdlEquities.stream().map(n -> new Equity(n.getIsin(), n.getCurrentValue()))
+					.collect(Collectors.toList());
+
+		portfolioAnalysisRequest.setEquities(equities);
+
+		HttpEntity<?> entity = new HttpEntity<>(portfolioAnalysisRequest, headers);
+
+		ResponseEntity<PortfolioAnalysisReponse> response = restTemplate.postForEntity(builder.build().toUri(),
+				entity, PortfolioAnalysisReponse.class);
+		LOG.info("API call to POST Portfolio analysis " + response.getStatusCodeValue());
+		return response.getBody();
+
 	}
 
 }
