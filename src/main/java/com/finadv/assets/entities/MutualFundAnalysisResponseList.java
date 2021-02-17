@@ -16,6 +16,8 @@ public class MutualFundAnalysisResponseList {
 
 	private List<MutualFundGrowthAnalysis> mfGrowthAnalysis;
 
+	private double amountNotAnalyzed;
+
 	public List<MutualFundAnalysisResponse> getMfaResponse() {
 		return mfaResponse;
 	}
@@ -46,6 +48,14 @@ public class MutualFundAnalysisResponseList {
 
 	public void setMfGrowthAnalysis(List<MutualFundGrowthAnalysis> mfGrowthAnalysis) {
 		this.mfGrowthAnalysis = mfGrowthAnalysis;
+	}
+
+	public double getAmountNotAnalyzed() {
+		return amountNotAnalyzed;
+	}
+
+	public void setAmountNotAnalyzed(double amountNotAnalyzed) {
+		this.amountNotAnalyzed = amountNotAnalyzed;
 	}
 
 }

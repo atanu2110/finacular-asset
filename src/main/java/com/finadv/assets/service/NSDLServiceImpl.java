@@ -343,7 +343,10 @@ public class NSDLServiceImpl implements NSDLService {
 
 		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
 				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(),
-						(float) ((m.getAmount() / nsdlReponse.getAmount()) * 100), m.getIndustry()))
+						(float) ((m.getAmount()
+								/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
+								* 100),
+						m.getIndustry()))
 				.collect(Collectors.toList());
 		if (nsdlReponse.getNsdlEquities().size() > 0) {
 			for (NSDLEquity equity : nsdlReponse.getNsdlEquities()) {
@@ -373,12 +376,17 @@ public class NSDLServiceImpl implements NSDLService {
 							.orElse(-1);
 					overallStock.get(indexMatch)
 							.setCurrentValue(overallStock.get(indexMatch).getCurrentValue() + equity.getCurrentValue());
-					overallStock.get(indexMatch).setEquityPercentage(
-							(float) ((overallStock.get(indexMatch).getCurrentValue() / nsdlReponse.getAmount()) * 100));
+					overallStock.get(indexMatch)
+							.setEquityPercentage((float) ((overallStock.get(indexMatch).getCurrentValue()
+									/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
+									* 100));
 
 				} else {
 					OverallStockData o = new OverallStockData(equity.getStockSymbol(), equity.getCurrentValue(),
-							(float) ((equity.getCurrentValue() / nsdlReponse.getAmount()) * 100), equity.getIndustry());
+							(float) ((equity.getCurrentValue()
+									/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
+									* 100),
+							equity.getIndustry());
 					overallStock.add(o);
 				}
 
@@ -387,13 +395,13 @@ public class NSDLServiceImpl implements NSDLService {
 
 		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
 		// Testing
-		/*
-		 * double suma = overallStock.stream().filter(o -> o.getEquityPercentage() >
-		 * 1).mapToDouble(OverallStockData::getEquityPercentage).sum(); double sumb =
-		 * overallStock.stream().filter(o -> o.getEquityPercentage() <
-		 * 1).mapToDouble(OverallStockData::getEquityPercentage).sum();
-		 * System.out.println(suma + "*****************" + sumb);
-		 */
+		
+		double suma = overallStock.stream().filter(o -> o.getEquityPercentage() > 1)
+				.mapToDouble(OverallStockData::getEquityPercentage).sum();
+		double sumb = overallStock.stream().filter(o -> o.getEquityPercentage() < 1)
+				.mapToDouble(OverallStockData::getEquityPercentage).sum();
+		System.out.println(suma + "*****************" + sumb);
+		 
 
 		nsdlReponse.setOverallStock(overallStock);
 
@@ -462,7 +470,7 @@ public class NSDLServiceImpl implements NSDLService {
 			List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
 					.map(n -> new MutualFundAnalysisScheme(
 							Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
-							n.getCurrentValue()))
+							n.getCurrentValue(), n.getIsin().trim()))
 					.collect(Collectors.toList());
 			mutualFundAnalysis.setMfSchemes(mfSchemes);
 			HttpEntity<?> entity = new HttpEntity<>(mutualFundAnalysis, headers);
@@ -476,6 +484,15 @@ public class NSDLServiceImpl implements NSDLService {
 			 * " list : "); mfr.getSchemeNames().stream().forEach((c) ->
 			 * System.out.println(c)); }
 			 */
+			/*
+			 * double suma = response.getBody().getMfaResponse().stream().filter(o ->
+			 * o.getPercentage() > 1)
+			 * .mapToDouble(MutualFundAnalysisResponse::getPercentage).sum(); double sumb =
+			 * response.getBody().getMfaResponse().stream().filter(o -> o.getPercentage() <
+			 * 1) .mapToDouble(MutualFundAnalysisResponse::getPercentage).sum();
+			 * System.out.println("mf data  " + suma + "*****************" + sumb);
+			 */
+			
 
 			LOG.info("API Response for  POST mutual fund underlying stocks : " + response.getStatusCodeValue());
 			return response.getBody();
@@ -557,7 +574,7 @@ public class NSDLServiceImpl implements NSDLService {
 		List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
 				.map(n -> new MutualFundAnalysisScheme(
 						Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
-						n.getCurrentValue()))
+						n.getCurrentValue(), n.getIsin().trim()))
 				.collect(Collectors.toList());
 
 		portfolioAnalysisRequest.setMfSchemes(mfSchemes);

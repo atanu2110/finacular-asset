@@ -6,15 +6,18 @@ package com.finadv.assets.entities;
  */
 public class MutualFundAnalysisScheme {
 
-	public MutualFundAnalysisScheme(String schemeName, double amount) {
-		super();
-		this.schemeName = schemeName;
-		this.amount = amount;
-	}
-
 	private String schemeName;
 
 	private double amount;
+
+	private String isin;
+
+	public MutualFundAnalysisScheme(String schemeName, double amount, String isin) {
+		super();
+		this.schemeName = schemeName;
+		this.amount = amount;
+		this.isin = isin;
+	}
 
 	public String getSchemeName() {
 		return schemeName;
@@ -30,6 +33,14 @@ public class MutualFundAnalysisScheme {
 
 	public void setAmount(double amount) {
 		this.amount = amount;
+	}
+
+	public String getIsin() {
+		return isin;
+	}
+
+	public void setIsin(String isin) {
+		this.isin = isin;
 	}
 
 }
