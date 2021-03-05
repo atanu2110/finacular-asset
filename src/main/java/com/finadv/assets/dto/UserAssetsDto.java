@@ -40,6 +40,8 @@ public class UserAssetsDto {
 
 	private String schemeType;
 
+	private String rtCode;
+
 	public int getAssetId() {
 		return assetId;
 	}
@@ -166,6 +168,14 @@ public class UserAssetsDto {
 
 	public void setSchemeType(String schemeType) {
 		this.schemeType = schemeType;
+	}
+
+	public String getRtCode() {
+		return rtCode;
+	}
+
+	public void setRtCode(String rtCode) {
+		this.rtCode = rtCode;
 	}
 
 }

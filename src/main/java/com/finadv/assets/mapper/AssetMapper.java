@@ -19,7 +19,8 @@ public interface AssetMapper {
 	UserAssetDto convertToUserAssetDto(UserAsset userAsset);
 	
 	@Mappings({ 
-	     @Mapping(source = "id", target = "assetId")
+	     @Mapping(source = "id", target = "assetId"),
+	     @Mapping(source = "code", target = "rtCode")
 	    })
 	UserAssetsDto convertToUserAssetsDto(UserAssets userAssets);
 }

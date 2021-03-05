@@ -112,7 +112,7 @@ public class NSDLServiceImpl implements NSDLService {
 					nsdlReponse.setAmount(
 							Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
 				}
-				if (line.contains("CAS ID")) {
+				if (line.contains("CAS ID") || line.contains("NSDL ID")) {
 					nsdlReponse.setHolderName(lines[linecounter + 1]);
 				}
 				if (line.contains("REGISTERED EMAIL")) {
@@ -169,6 +169,7 @@ public class NSDLServiceImpl implements NSDLService {
 				}
 				// Get all Equity shares
 				String[] lineSplit = new String[0];
+				String[] extralineSplit = new String[0];
 				if (line.trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INE).*")) {
 					NSDLEquity nsdlEquity = new NSDLEquity();
 					if (lines[linecounter + 1].contains("NSE")) {
@@ -178,16 +179,33 @@ public class NSDLServiceImpl implements NSDLService {
 							if (lines[linecounter + i + 1].trim().contains(".")
 									|| lines[linecounter + i + 1].trim().contains(",")) {
 								lineSplit = lines[linecounter + i + 1].split(" ");
-								break;
+								if (lineSplit.length > 2 && !lines[linecounter + i + 1].contains("locked")) {
+									break;
+								} else {
+									extralineSplit = lines[linecounter + i + 3].split(" ");
+									break;
+								}
+
 							}
 
 						}
 
-						nsdlEquity
-								.setShares(Long.parseLong(lineSplit[lineSplit.length - 3].replaceAll(",", "").trim()));
+						if (lineSplit.length > 2) {
+							nsdlEquity.setShares(
+									Long.parseLong(lineSplit[lineSplit.length - 3].replaceAll(",", "").trim()));
+						} else {
+							nsdlEquity.setShares(
+									Long.parseLong(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+						}
+
 						// current value
-						nsdlEquity.setCurrentValue(
-								Double.parseDouble(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+						if (lineSplit.length > 2) {
+							nsdlEquity.setCurrentValue(
+									Double.parseDouble(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+						} else {
+							nsdlEquity.setCurrentValue(Double
+									.parseDouble(extralineSplit[extralineSplit.length - 1].replaceAll(",", "").trim()));
+						}
 
 					} else {
 						lineSplit = line.trim().split(" ");
@@ -239,10 +257,14 @@ public class NSDLServiceImpl implements NSDLService {
 						for (int j = linecounter + 2; j <= linecounter + track; j++) {
 							mfISINDescription.append(" ").append(lines[j]);
 						}
-						nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
-						nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
-						// Current value
-						nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
+						
+						if(! (Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
+							nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
+							nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
+							// Current value
+							nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
+						}
+						
 					} else {
 						lineSplit = line.trim().split(" ");
 						nsdlMutualFund.setIsin(lineSplit[0]);
@@ -260,12 +282,14 @@ public class NSDLServiceImpl implements NSDLService {
 
 						}
 					}
-
-					mutualFunds.add(nsdlMutualFund);
+					if(! (Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
+						mutualFunds.add(nsdlMutualFund);
+					}
+					
 				}
 
 				linecounter++;
-				// System.out.println(line);
+			//	System.out.println(line);
 			}
 
 			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
@@ -274,9 +298,11 @@ public class NSDLServiceImpl implements NSDLService {
 			nsdlReponse.setNsdlMutualFunds(mutualFunds);
 			doc.close();
 
-			if ("portal".equalsIgnoreCase(source)) {
+			if ("portal".equalsIgnoreCase(source) && !userAssetList.isEmpty()) {
+				String nick = email;
 				UserAsset userAsset = new UserAsset();
 				userAsset.setUserId(userId);
+				userAssetList.forEach(ua -> ua.setNickName(nick));
 				userAsset.setAssets(userAssetList);
 				assetService.saveUserAssetsByUserId(userAsset, "nsdl");
 			} else {
@@ -301,6 +327,7 @@ public class NSDLServiceImpl implements NSDLService {
 			userAssets.setAssetProvider(institution);
 			AssetType assetType = new AssetType();
 			assetType.setId(4);
+			assetType.setTypeName("equity");
 			userAssets.setAssetType(assetType);
 			AssetInstrument assetInstrument = new AssetInstrument();
 			assetInstrument.setId(7);
@@ -395,13 +422,12 @@ public class NSDLServiceImpl implements NSDLService {
 
 		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
 		// Testing
-		
+
 		double suma = overallStock.stream().filter(o -> o.getEquityPercentage() > 1)
 				.mapToDouble(OverallStockData::getEquityPercentage).sum();
 		double sumb = overallStock.stream().filter(o -> o.getEquityPercentage() < 1)
 				.mapToDouble(OverallStockData::getEquityPercentage).sum();
 		System.out.println(suma + "*****************" + sumb);
-		 
 
 		nsdlReponse.setOverallStock(overallStock);
 
@@ -446,10 +472,10 @@ public class NSDLServiceImpl implements NSDLService {
 		}
 
 		// Get portfolio analysis
-		PortfolioAnalysisReponse  portfolioAnalysisReponse = getPortfolioAnalysis(nsdlReponse.getNsdlMutualFunds(),
+		PortfolioAnalysisReponse portfolioAnalysisReponse = getPortfolioAnalysis(nsdlReponse.getNsdlMutualFunds(),
 				nsdlReponse.getNsdlEquities());
 		nsdlReponse.setPortfolioAnalysis(portfolioAnalysisReponse);
-		
+
 		// Save user data for future
 		asyncService.saveNSDLData(nsdlReponse.getHolderName(), email, fileName, password);
 	}
@@ -492,7 +518,6 @@ public class NSDLServiceImpl implements NSDLService {
 			 * 1) .mapToDouble(MutualFundAnalysisResponse::getPercentage).sum();
 			 * System.out.println("mf data  " + suma + "*****************" + sumb);
 			 */
-			
 
 			LOG.info("API Response for  POST mutual fund underlying stocks : " + response.getStatusCodeValue());
 			return response.getBody();
@@ -588,8 +613,8 @@ public class NSDLServiceImpl implements NSDLService {
 
 		HttpEntity<?> entity = new HttpEntity<>(portfolioAnalysisRequest, headers);
 
-		ResponseEntity<PortfolioAnalysisReponse> response = restTemplate.postForEntity(builder.build().toUri(),
-				entity, PortfolioAnalysisReponse.class);
+		ResponseEntity<PortfolioAnalysisReponse> response = restTemplate.postForEntity(builder.build().toUri(), entity,
+				PortfolioAnalysisReponse.class);
 		LOG.info("API call to POST Portfolio analysis " + response.getStatusCodeValue());
 		return response.getBody();
 

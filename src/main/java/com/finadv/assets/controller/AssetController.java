@@ -16,11 +16,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.finadv.assets.dto.PortfolioHistoryResponseList;
 import com.finadv.assets.dto.UserAssetDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.CurrentAssetGrowthRequest;
 import com.finadv.assets.entities.CurrentGrowthRequest;
 import com.finadv.assets.entities.CurrentGrowthResponseList;
+import com.finadv.assets.entities.PortfolioHistory;
+import com.finadv.assets.entities.TargetAllocation;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.entities.UserIncomeExpenseDetail;
@@ -142,6 +146,38 @@ public class AssetController {
 			@RequestBody UserIncomeExpenseDetail userIncomeExpenseDetail) {
 		assetService.createUserIncomeExpense(userIncomeExpenseDetail);
 		return new ResponseEntity<>("User Income Expense successfully saved !!", HttpStatus.OK);
+	}
+
+	@PostMapping("/portfolio/history")
+	public ResponseEntity<String> saveUserPortfolioForPeriod(@RequestBody PortfolioHistory portfolioHistory) {
+		assetService.saveUserPortfolioForPeriod(portfolioHistory);
+		return new ResponseEntity<>("User Portfolio History successfully saved !!", HttpStatus.OK);
+	}
+
+	@GetMapping("/portfolio/history/{userId}")
+	public ResponseEntity<PortfolioHistoryResponseList> getsaveUserPortfolioHistory(@PathVariable long userId) {
+		return new ResponseEntity<>(assetService.getsaveUserPortfolioHistory(userId), HttpStatus.OK);
+	}
+
+	@PostMapping("/current/asset/growth")
+	public ResponseEntity<?> getCurrentAssetGrowth(@RequestBody CurrentAssetGrowthRequest currentAssetGrowth) {
+		CurrentGrowthRequest currentGrowthRequest = new CurrentGrowthRequest();
+		currentGrowthRequest.setAge(currentAssetGrowth.getAge());
+		currentGrowthRequest.setCurrentAssetList(currentAssetGrowth.getCurrentAssetList());
+		currentGrowthRequest.setIncome(0);
+		currentGrowthRequest.setExpense(0);
+		CurrentGrowthResponseList currentGrowthResponseList = assetService.getCurrentGrowth(currentGrowthRequest);
+
+		return new ResponseEntity<>(currentGrowthResponseList, HttpStatus.OK);
+
+	}
+
+	@PostMapping("/target/asset/growth")
+	public ResponseEntity<?> getTargetAssetGrowth(@RequestBody TargetAllocation targetAllocation) {
+		CurrentGrowthResponseList currentGrowthResponseList = assetService.getTargetGrowth(targetAllocation);
+
+		return new ResponseEntity<>(currentGrowthResponseList, HttpStatus.OK);
+
 	}
 
 }

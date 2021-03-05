@@ -9,6 +9,7 @@ import java.util.List;
 public class UserAssetDto {
 
 	private List<UserAssetsDto> assets;
+	private List<UserAssetOverviewDto> assetOverview;
 	private long userId;
 
 	public List<UserAssetsDto> getAssets() {
@@ -25,6 +26,14 @@ public class UserAssetDto {
 
 	public void setUserId(long userId) {
 		this.userId = userId;
+	}
+
+	public List<UserAssetOverviewDto> getAssetOverview() {
+		return assetOverview;
+	}
+
+	public void setAssetOverview(List<UserAssetOverviewDto> assetOverview) {
+		this.assetOverview = assetOverview;
 	}
 
 }

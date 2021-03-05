@@ -2,8 +2,10 @@ package com.finadv.assets.entities;
 
 import java.time.LocalDate;
 
-public class Transaction {
+import com.fasterxml.jackson.annotation.JsonFormat;
 
+public class Transaction {
+	@JsonFormat(pattern = "yyyy-MM-dd")
 	private LocalDate date;
 	private String transactionDetail;
 	private Double amount;

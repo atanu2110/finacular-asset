@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
@@ -13,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.io.RandomAccessFile;
 import org.apache.pdfbox.io.RandomAccessRead;
@@ -108,7 +110,8 @@ public class CAMSServiceImpl implements CAMSService {
 				List<Transaction> transactionList = new ArrayList<>();
 				var folioNamePan = line.split(PAN);
 				folio.setFolioName(folioNamePan[0].replaceAll("\\s", "").split(":")[1].strip());
-				folio.setPan(folioNamePan[1].strip().substring(0, 10).strip());
+				if (folioNamePan.length > 2)
+					folio.setPan(folioNamePan[1].strip().substring(0, 10).strip());
 				// log.info("Got the Folio No : {}", line);
 				String scheme = "";
 				for (int txnOpenIndex = folioIndex + 1; txnOpenIndex < linesList.size(); txnOpenIndex++) {
@@ -119,13 +122,17 @@ public class CAMSServiceImpl implements CAMSService {
 						// var schemeAndAdvisor = scheme.split(ADVISOR_REGEX);
 						String[] splitScheme = scheme.split("-");
 						folio.setSchemeName(scheme);
-						folio.setRtCode(splitScheme[0]);
+						if (folio.getSchemeName().contains("KFINTECH")) {
+							folio.setRtCode(StringUtils.substring(splitScheme[0], 0, splitScheme[0].length() - 1));
+						} else {
+							folio.setRtCode(splitScheme[0]);
+						}
 						folioIndex = txnOpenIndex + OPEN_TO_TXN_LINE_SKIP;
 						break;
 					}
 				}
 				// log.info("Got the Scheme : {}", scheme);
-				//System.out.println("Got the Scheme : {}" + scheme);
+				// System.out.println("Got the Scheme : {}" + scheme);
 				for (int purchaseListIndex = folioIndex; purchaseListIndex < linesList.size(); purchaseListIndex++) {
 					if (linesList.get(purchaseListIndex).replaceAll("\\s", "").contains(CLOSING_UNIT_BALANCE)) {
 						folio.setClosingBalance(
@@ -154,12 +161,15 @@ public class CAMSServiceImpl implements CAMSService {
 								}
 							} else {
 								if (transactionDetail.length() != 0) {
-									transactionList.add(getTransactionDetails(transactionDetail));
+									Transaction t = getTransactionDetails(transactionDetail);
+									if (t.getDate() != null)
+										transactionList.add(t);
 								}
 								// log.info(transactionDetail);
 							}
 						}
 						// log.info("Transactions extracted for scheme : " + scheme);
+						folio.setTransactions(transactionList);
 						folioIndex = purchaseListIndex;
 						break;
 					}
@@ -179,10 +189,25 @@ public class CAMSServiceImpl implements CAMSService {
 				if (linesList.get(i).trim().matches("^[0-9].*$")) {
 					String[] splitLine = linesList.get(i).trim().split("\\s+");
 					folio.setFolioName(splitLine[0]);
-					folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
+					if (splitLine[splitLine.length - 1].contains("KFINTECH")) {
+
+						String rtCode = (Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get());
+						folio.setRtCode(StringUtils.substring(rtCode, 0, rtCode.length() - 1));
+					} else {
+						folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
+					}
 					folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
-					folio.setClosingBalance(Double.valueOf(splitLine[splitLine.length - 5].replaceAll(",", "").trim()));
+					folio.setClosingBalance(
+							Double.valueOf(splitLine[splitLine.length - 5].replaceAll("[A-Za-z,]", "").trim()));
 					folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
+
+					StringBuffer name = new StringBuffer();
+					for (int j = 1; j < splitLine.length - 5; j++) {
+						if (splitLine[j].contains("-"))
+							break;
+						name.append(splitLine[j]).append(" ");
+					}
+					folio.setSchemeName(name.toString());
 
 					fundInfoList.add(folio);
 				}
@@ -198,12 +223,14 @@ public class CAMSServiceImpl implements CAMSService {
 				UserAssets userAssets = new UserAssets();
 				userAssets.setAmount(fundInfo.getValuation());
 				userAssets.setHolderName(camsData.getHolderInfo().getName());
+				userAssets.setNickName(camsData.getHolderInfo().getEmail());
 				userAssets.setCreatedAt(LocalDateTime.now());
 				Institution institution = new Institution();
 				institution.setId(1);
 				userAssets.setAssetProvider(institution);
 				AssetType assetType = new AssetType();
 				assetType.setId(4);
+				assetType.setTypeName("equity");
 				userAssets.setAssetType(assetType);
 				AssetInstrument assetInstrument = new AssetInstrument();
 				assetInstrument.setId(8);
@@ -252,17 +279,20 @@ public class CAMSServiceImpl implements CAMSService {
 			var date = transactionDetail.substring(0, 11);
 			transaction.setDate(LocalDate.parse(date, DateTimeFormatter.ofPattern("dd-MMM-yyyy")));
 			if (transactionDetail.contains("(")) {
-				//System.out.println(transactionDetail);
+				// System.out.println(transactionDetail);
 			} else {
-				transaction.setTransactionDetail(transactionDetail.substring(12, 76).strip());
-				transaction.setAmount(parseAmount(transactionDetail.substring(76, 90)));
+
+				String[] lineSplitter = Arrays.asList(transactionDetail.split(" ")).stream()
+						.filter(str -> !str.isEmpty()).collect(Collectors.toList()).toArray(new String[0]);
+
+				transaction.setTransactionDetail(lineSplitter[1].trim());
+				transaction.setAmount(parseAmount(lineSplitter[lineSplitter.length - 4].trim()));
 				transaction.setUnits(
-						Double.valueOf(transactionDetail.substring(95, 105).strip().replaceAll(AMOUNT_REGEX, "")));
-				transaction.setPrice(
-						Double.valueOf(transactionDetail.substring(110, 125).strip().replaceAll(AMOUNT_REGEX, "")));
+						Double.valueOf(lineSplitter[lineSplitter.length - 3].trim().replaceAll(AMOUNT_REGEX, "")));
+				transaction.setPrice(Double.valueOf(lineSplitter[lineSplitter.length - 2].trim().replaceAll(AMOUNT_REGEX, "")));
 				transaction.setUnitBalance(
-						Double.valueOf(transactionDetail.substring(129).strip().replaceAll(AMOUNT_REGEX, "")));
-				//System.out.println(transactionDetail.substring(12, 79));
+						Double.valueOf(lineSplitter[lineSplitter.length - 1].trim().replaceAll(AMOUNT_REGEX, "")));
+				// System.out.println(transactionDetail.substring(12, 79));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
