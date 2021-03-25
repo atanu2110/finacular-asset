@@ -43,7 +43,10 @@ public interface AssetService {
 	void saveUserPortfolioForPeriod(PortfolioHistory portfolioHistory);
 
 	PortfolioHistoryResponseList getsaveUserPortfolioHistory(long userId);
-	
+
 	CurrentGrowthResponseList getTargetGrowth(TargetAllocation targetAllocation);
-	
+
+	UserIncomeExpenseDetail updateUserIncomeExpense(UserIncomeExpenseDetail userIncomeExpenseDetail);
+
+	void purgeUserAsset(long userId);
 }

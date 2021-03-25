@@ -210,6 +210,11 @@ public class AssetServiceImpl implements AssetService {
 	public void deleteUserAsset(long assetId) {
 		userAssetRepository.deleteById((int) assetId);
 	}
+	
+	@Override
+	public void purgeUserAsset(long userId) {
+		userAssetRepository.deleteUserAssetByUserId(userId);
+	}
 
 	@Override
 	public CurrentGrowthResponseList getCurrentGrowth(CurrentGrowthRequest currentGrowth) {
@@ -521,5 +526,18 @@ public class AssetServiceImpl implements AssetService {
 
 		return currentGrowthResponseList;
 	}
+
+	@Override
+	public UserIncomeExpenseDetail updateUserIncomeExpense(UserIncomeExpenseDetail userIncomeExpenseDetail) {
+		UserIncomeExpenseDetail userIncomeExpenseDetailInDB = userIncomeExpenseRepository
+				.findById(userIncomeExpenseDetail.getId()).orElse(null);
+		if (userIncomeExpenseDetailInDB != null) {
+			userIncomeExpenseDetail.setUpdatedAt(Date.from(Instant.now()));
+			userIncomeExpenseRepository.save(userIncomeExpenseDetail);
+			return userIncomeExpenseDetail;
+		}
+		return null;
+	}
+
 
 }

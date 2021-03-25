@@ -172,7 +172,7 @@ public class NSDLServiceImpl implements NSDLService {
 				String[] extralineSplit = new String[0];
 				if (line.trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INE).*")) {
 					NSDLEquity nsdlEquity = new NSDLEquity();
-					if (lines[linecounter + 1].contains("NSE")) {
+					if (lines[linecounter + 1].contains("NSE") || lines[linecounter + 1].contains("BSE")) {
 						nsdlEquity.setIsin(line.trim());
 						nsdlEquity.setStockSymbol(lines[linecounter + 1].trim());
 						for (int i = 1; i <= 5; i++) {
@@ -211,19 +211,30 @@ public class NSDLServiceImpl implements NSDLService {
 						lineSplit = line.trim().split(" ");
 						nsdlEquity.setIsin(lineSplit[0]);
 						nsdlEquity.setStockSymbol(lineSplit[1]);
-						for (int i = 5; i <= 20; i++) {
+						for (int i = 0; i <= 20; i++) {
 							if (lines[linecounter + i + 1].trim().matches("^(INE).*")
-									|| lines[linecounter + i + 1].trim().contains("Sub Total")) {
+									|| lines[linecounter + i + 1].trim().matches("^(IN9).*")
+									|| lines[linecounter + i + 1].trim().contains("Sub Total")
+									|| lines[linecounter + i + 1].trim().contains("Consolidated Account Statement")) {
 								lineSplit = lines[linecounter + i].split(" ");
 								break;
 							}
 
 						}
-						// current value
-						nsdlEquity.setCurrentValue(Double.parseDouble(lineSplit[1].replaceAll(",", "").trim()));
-						// shares
-						nsdlEquity.setShares(Math.round(nsdlEquity.getCurrentValue()
-								/ Double.parseDouble(lineSplit[0].replaceAll(",", "").trim())));
+						if (lineSplit.length == 2) {
+							// current value
+							nsdlEquity.setCurrentValue(Double.parseDouble(lineSplit[1].replaceAll(",", "").trim()));
+							// shares
+							nsdlEquity.setShares(Math.round(nsdlEquity.getCurrentValue()
+									/ Double.parseDouble(lineSplit[0].replaceAll(",", "").trim())));
+						} else {
+							nsdlEquity.setCurrentValue(
+									Double.parseDouble(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+							// shares
+							nsdlEquity.setShares(Math.round(nsdlEquity.getCurrentValue()
+									/ Double.parseDouble(lineSplit[lineSplit.length - 2].replaceAll(",", "").trim())));
+						}
+
 					}
 					// Get percentage share
 					float per = (float) (nsdlEquity.getCurrentValue() / nsdlReponse.getNsdlAssetAmount().getEquities())
@@ -245,7 +256,7 @@ public class NSDLServiceImpl implements NSDLService {
 						nsdlMutualFund.setIsin(line.trim());
 						int track = 0;
 						StringBuilder mfISINDescription = new StringBuilder();
-						for (int i = 1; i <= 7; i++) {
+						for (int i = 1; i <= 10; i++) {
 							if (lines[linecounter + i + 1].trim().contains(".")
 									|| lines[linecounter + i + 1].trim().contains(",")) {
 								lineSplit = lines[linecounter + i + 1].split(" ");
@@ -257,35 +268,56 @@ public class NSDLServiceImpl implements NSDLService {
 						for (int j = linecounter + 2; j <= linecounter + track; j++) {
 							mfISINDescription.append(" ").append(lines[j]);
 						}
-						
-						if(! (Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
+
+						if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 							nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
 							nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[1].replaceAll(",", "").trim()));
 							// Current value
 							nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[5].replaceAll(",", "").trim()));
 						}
-						
+
 					} else {
 						lineSplit = line.trim().split(" ");
 						nsdlMutualFund.setIsin(lineSplit[0]);
-						nsdlMutualFund
-								.setUnits(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
-						nsdlMutualFund.setIsinDescription(
-								String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
+
+						if (lineSplit[lineSplit.length - 1].trim().contains(".")
+								|| lineSplit[lineSplit.length - 1].trim().contains(",")) {
+							nsdlMutualFund.setUnits(
+									Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
+							nsdlMutualFund.setIsinDescription(
+									String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
+						} else {
+							nsdlMutualFund.setIsinDescription(
+									String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
+							for (int i = 1; i <= 5; i++) {
+								if (lines[linecounter + i + 1].trim().contains(".")
+										|| lines[linecounter + i + 1].trim().contains(",")) {
+									lineSplit = lines[linecounter + i + 1].split(" ");
+									nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[0].replaceAll(",", "").trim()));
+									break;
+
+								}
+							}
+
+						}
+
 						for (int i = 8; i <= 12; i++) {
-							if (lines[linecounter + i + 1].trim().contains("Total")) {
-								lineSplit = lines[linecounter + i + 1].split(" ");
+							if (lines[linecounter + i + 1].trim().contains("Total")
+									|| lines[linecounter + i + 1].trim().matches("^(INF).*")
+									|| lines[linecounter + i + 1].trim().contains("Consolidated Account Statement")) {
+								lineSplit = lines[linecounter + i].split(" ");
 								nsdlMutualFund.setCurrentValue(Double.parseDouble(
 										lineSplit[lineSplit.length - 1].trim().replaceAll(",", "").trim()));
 								break;
 							}
 
 						}
+
 					}
-					if(! (Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
+					if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 						mutualFunds.add(nsdlMutualFund);
 					}
-					
+
 				}
 
 				linecounter++;

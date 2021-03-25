@@ -122,6 +122,14 @@ public class AssetController {
 
 	}
 
+	
+	@DeleteMapping("/purge/{userId}")
+	public ResponseEntity<?> purgeUserAsset(@PathVariable long userId) {
+		assetService.purgeUserAsset(userId);
+		return new ResponseEntity<>("Asset purged successfully !!", HttpStatus.OK);
+
+	}
+	
 	@PostMapping("/current/growth")
 	public ResponseEntity<?> getCurrentGrowth(@RequestBody CurrentGrowthRequest currentGrowth) {
 		CurrentGrowthResponseList currentGrowthResponseList = assetService.getCurrentGrowth(currentGrowth);
@@ -146,6 +154,18 @@ public class AssetController {
 			@RequestBody UserIncomeExpenseDetail userIncomeExpenseDetail) {
 		assetService.createUserIncomeExpense(userIncomeExpenseDetail);
 		return new ResponseEntity<>("User Income Expense successfully saved !!", HttpStatus.OK);
+	}
+
+	@PutMapping("/income/expense/{id}")
+	public ResponseEntity<?> updateUserIncomeExpense(@RequestBody UserIncomeExpenseDetail userIncomeExpenseDetail) {
+
+		UserIncomeExpenseDetail updatedUserIncomeExpenseDetail = assetService
+				.updateUserIncomeExpense(userIncomeExpenseDetail);
+		if (updatedUserIncomeExpenseDetail != null) {
+			return new ResponseEntity<>(updatedUserIncomeExpenseDetail, HttpStatus.OK);
+		}
+
+		return new ResponseEntity<>("User Income Expense does not exists !!", HttpStatus.BAD_REQUEST);
 	}
 
 	@PostMapping("/portfolio/history")
