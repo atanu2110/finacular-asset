@@ -210,7 +210,7 @@ public class AssetServiceImpl implements AssetService {
 	public void deleteUserAsset(long assetId) {
 		userAssetRepository.deleteById((int) assetId);
 	}
-	
+
 	@Override
 	public void purgeUserAsset(long userId) {
 		userAssetRepository.deleteUserAssetByUserId(userId);
@@ -534,10 +534,17 @@ public class AssetServiceImpl implements AssetService {
 		if (userIncomeExpenseDetailInDB != null) {
 			userIncomeExpenseDetail.setUpdatedAt(Date.from(Instant.now()));
 			userIncomeExpenseRepository.save(userIncomeExpenseDetail);
-			return userIncomeExpenseDetail;
-		}
-		return null;
-	}
 
+		} else {
+			if (userIncomeExpenseRepository.findUserIncomeExpenseById(userIncomeExpenseDetail.getUserId()) == null) {
+				userIncomeExpenseDetail.setCreatedAt(Date.from(Instant.now()));
+				userIncomeExpenseRepository.save(userIncomeExpenseDetail);
+				userIncomeExpenseDetailInDB = userIncomeExpenseRepository.findById(userIncomeExpenseDetail.getId())
+						.orElse(null);
+			}
+
+		}
+		return userIncomeExpenseDetail;
+	}
 
 }
