@@ -15,9 +15,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.finadv.assets.entities.CAMSEmail;
 import com.finadv.assets.entities.NSDLReponse;
+import com.finadv.assets.entities.ZerodhaResponse;
 import com.finadv.assets.service.CAMSService;
 import com.finadv.assets.service.NSDLService;
 import com.finadv.assets.service.SeleniumService;
+import com.finadv.assets.service.ZerodhaService;
 
 /**
  * @author atanu
@@ -34,6 +36,8 @@ public class ExtractController {
 	private SeleniumService seleniumService;
 	@Autowired
 	private NSDLService nsdlService;
+	@Autowired
+	private ZerodhaService zerodhaService;
 
 	@Autowired
 	public void setCamsService(CAMSService camsService) {
@@ -67,5 +71,11 @@ public class ExtractController {
 	public ResponseEntity<NSDLReponse> extractFromNSDL(@RequestParam("nsdlFile") MultipartFile nsdlFile,
 			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) {
 		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId , source));
+	}
+	
+	@PostMapping(path = "/zerodha")
+	public ResponseEntity<ZerodhaResponse> extractFromZerodhaExcel(@RequestParam("excelFile") MultipartFile excelFile,
+			@RequestParam("userId") Long userId , @RequestParam("source") String source) {
+		return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(excelFile, userId, source));
 	}
 }
