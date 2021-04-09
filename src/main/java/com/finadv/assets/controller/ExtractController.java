@@ -17,6 +17,7 @@ import com.finadv.assets.entities.CAMSEmail;
 import com.finadv.assets.entities.NSDLReponse;
 import com.finadv.assets.entities.ZerodhaResponse;
 import com.finadv.assets.service.CAMSService;
+import com.finadv.assets.service.CDSLService;
 import com.finadv.assets.service.NSDLService;
 import com.finadv.assets.service.SeleniumService;
 import com.finadv.assets.service.ZerodhaService;
@@ -36,6 +37,8 @@ public class ExtractController {
 	private SeleniumService seleniumService;
 	@Autowired
 	private NSDLService nsdlService;
+	@Autowired
+	private CDSLService cdslService;
 	@Autowired
 	private ZerodhaService zerodhaService;
 
@@ -71,6 +74,12 @@ public class ExtractController {
 	public ResponseEntity<NSDLReponse> extractFromNSDL(@RequestParam("nsdlFile") MultipartFile nsdlFile,
 			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) {
 		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId , source));
+	}
+	
+	@PostMapping(path = "/cdsl")
+	public ResponseEntity<NSDLReponse> extractFromCDSL(@RequestParam("cdslFile") MultipartFile cdslFile,
+			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) {
+		return ResponseEntity.ok(cdslService.extractFromCDSL(cdslFile, password, userId , source));
 	}
 	
 	@PostMapping(path = "/zerodha")
