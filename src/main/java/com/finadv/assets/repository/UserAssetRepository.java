@@ -1,6 +1,7 @@
 package com.finadv.assets.repository;
 
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -34,4 +35,10 @@ public interface UserAssetRepository extends JpaRepository<UserAssets, Integer> 
 	@Transactional
 	@Query(value = "DELETE FROM user_assets u WHERE u.user_Id = :userid", nativeQuery = true)
 	void deleteUserAssetByUserId(@Param("userid") Long id);
+
+	@Modifying
+	@Transactional
+	@Query(value = "DELETE FROM user_assets u WHERE u.user_Id = :userid AND u.nick_name = :email AND u.asset_instrument_id IN (:instrumentId)", nativeQuery = true)
+	void deleteUserAssetByUserIdEmailAndInInstrument(@Param("userid") Long id, @Param("email") String email,
+			@Param("instrumentId") Set<Long> instrumentId);
 }

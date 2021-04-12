@@ -83,7 +83,7 @@ public class SeleniumService {
 	private void automateCAMSEmail(String email, String password) {
 		System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver.exe");
 		ChromeOptions chromeOptions = new ChromeOptions();
-		// chromeOptions.addArguments("--headless");
+		//chromeOptions.addArguments("--headless");
 		WebDriver driver = new ChromeDriver(chromeOptions);
 
 		LOG.info("Driver created");
@@ -140,8 +140,20 @@ public class SeleniumService {
 		wait1.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("input[type=password]")));
 		driver.findElement(By.cssSelector("input[type=password]")).sendKeys(password);
 
-		wait1.until(ExpectedConditions.visibilityOfElementLocated(By.id("mat-input-3")));
-		driver.findElement(By.id("mat-input-3")).sendKeys(password);
+		
+		  wait1.until(ExpectedConditions.visibilityOfElementLocated(By.id("mat-input-3"
+		  ))); driver.findElement(By.id("mat-input-3")).sendKeys(password);
+		 
+
+		//wait1.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"mat-input-3\"]")));
+		//driver.findElement(By.xpath("//*[@id=\"mat-input-3\"]")).sendKeys(password);
+		  
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		// wait1.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[7]/button")));
 		driver.findElement(By.xpath("//div[7]/button")).submit();
@@ -188,7 +200,8 @@ public class SeleniumService {
 			helper.setTo(email);
 			helper.setText(html, true);
 			helper.setSubject("CAMS generated successfully ");
-			helper.setFrom("noreply@finacular.in");
+			//helper.setFrom("noreply@finacular.in");
+			helper.setFrom("atanu.mazumdar2110@gmail.com");
 		} catch (MessagingException e) {
 			LOG.error(e.getMessage());
 		}

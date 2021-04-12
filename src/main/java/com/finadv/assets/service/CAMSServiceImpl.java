@@ -101,7 +101,7 @@ public class CAMSServiceImpl implements CAMSService {
 		for (int folioIndex = 0; folioIndex < linesList.size(); folioIndex++) {
 			String line = linesList.get(folioIndex);
 			if (line.replaceAll("\\s", "").contains(EMAIL_ID)) {
-				holderInfo.setEmail(line.substring(0, 70).split(":")[1].strip());
+				holderInfo.setEmail(line.substring(0, 70).split(":")[1].strip().trim().replaceAll(" ", "").toLowerCase());
 				holderInfo.setName(linesList.get(folioIndex + 2).substring(0, 70).strip());
 			}
 

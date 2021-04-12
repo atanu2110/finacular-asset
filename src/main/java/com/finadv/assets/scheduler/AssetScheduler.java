@@ -41,35 +41,36 @@ public class AssetScheduler {
 	// @Scheduled(initialDelay = 2000, fixedRate = 200000)
 	@Scheduled(cron = "0 0 18 28 * ?")
 	public void schedulePortfolioCapturePerMonth() {
-		
+		System.out.println("***********************************");
+
 		final Calendar c = Calendar.getInstance();
-		if (c.get(Calendar.DATE) == c.getActualMaximum(Calendar.DATE)) {
-			LOG.info("Inside schedulePortfolioCapturePerMonth at time : " + Instant.now());
-			List<Long> userIdList = userAssetRepository.findDistinctUserId();
-			for (Long uid : userIdList) {
-				LOG.info("Method: schedulePortfolioCapturePerMonth : Getting assets for " + uid);
-				try {
-					UserAssetDto uaDto = assetService.getUserAssetByUserId(uid);
+		// if (c.get(Calendar.DATE) == c.getActualMaximum(Calendar.DATE)) {
+		LOG.info("Inside schedulePortfolioCapturePerMonth at time : " + Instant.now());
+		List<Long> userIdList = userAssetRepository.findDistinctUserId();
+		for (Long uid : userIdList) {
+			LOG.info("Method: schedulePortfolioCapturePerMonth : Getting assets for " + uid);
+			try {
+				UserAssetDto uaDto = assetService.getUserAssetByUserId(uid);
 
-					// Get net worth
-					double netWorth = uaDto.getAssets().stream().map(item -> item.getCurrentValue()).reduce(0.0,
-							(a, b) -> a + b);
-					LOG.info("Method: schedulePortfolioCapturePerMonth : Net worth of userId : " + uid + netWorth);
+				// Get net worth
+				double netWorth = uaDto.getAssets().stream().map(item -> item.getCurrentValue()).reduce(0.0,
+						(a, b) -> a + b);
+				LOG.info("Method: schedulePortfolioCapturePerMonth : Net worth of userId : " + uid + "  " + netWorth);
 
-					PortfolioHistory portfolioHistory = new PortfolioHistory();
-					portfolioHistory.setUserId(uid);
-					portfolioHistory.setPeriod(LocalDateTime.now());
-					portfolioHistory.setAmount(Double.valueOf(netWorth).longValue());
+				PortfolioHistory portfolioHistory = new PortfolioHistory();
+				portfolioHistory.setUserId(uid);
+				portfolioHistory.setPeriod(LocalDateTime.now());
+				portfolioHistory.setAmount(Double.valueOf(netWorth).longValue());
 
-					assetService.saveUserPortfolioForPeriod(portfolioHistory);
-				} catch (Exception e) {
-					LOG.error(e.getMessage());
-				}
-
+				assetService.saveUserPortfolioForPeriod(portfolioHistory);
+			} catch (Exception e) {
+				LOG.error(e.getMessage());
 			}
 
 		}
-		
+
+		// }
+
 	}
 
 }

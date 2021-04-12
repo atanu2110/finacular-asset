@@ -87,4 +87,25 @@ public class ExtractController {
 			@RequestParam("userId") Long userId , @RequestParam("source") String source) {
 		return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(excelFile, userId, source));
 	}
+	
+	
+	@PostMapping(path = "/upload/asset/file")
+	public ResponseEntity<?> uploadAssetFile(@RequestParam("fileName") MultipartFile file,
+			@RequestParam("fileType") String fileType, @RequestParam("password") String password,
+			@RequestParam("userId") Long userId, @RequestParam("source") String source) throws IOException {
+		switch (fileType) {
+		case "cams":
+			return ResponseEntity.ok(camsService.extractMFData(file, password, userId));
+		case "nsdl":
+			return ResponseEntity.ok(nsdlService.extractFromNSDL(file, password, userId, source));
+		case "cdsl":
+			return ResponseEntity.ok(cdslService.extractFromCDSL(file, password, userId, source));
+		case "zerodha":
+			return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(file, userId, source));
+		default:
+			return new ResponseEntity<>("Invalid File type !!", HttpStatus.BAD_REQUEST);
+		}
+
+	}
+
 }

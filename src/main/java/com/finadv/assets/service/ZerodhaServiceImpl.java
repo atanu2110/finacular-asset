@@ -67,7 +67,7 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		        nsdlEquity.setIsin(tempRow.getCell(2).toString());
 		        nsdlEquity.setStockSymbol(tempRow.getCell(1).toString());
 		        nsdlEquity.setShares((long)Double.parseDouble(tempRow.getCell(4).toString()));
-		        nsdlEquity.setCurrentValue(Double.parseDouble(tempRow.getCell(10).toString()));
+		        nsdlEquity.setCurrentValue(Double.parseDouble(tempRow.getCell(10).toString()) * nsdlEquity.getShares());
 		        
 		        nsdlEquities.add(nsdlEquity);
 		        createAssetForEquities(nsdlEquity, userId, userAssetList, zerodhaResponse.getClientId());
@@ -84,7 +84,8 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		        String schemeSymbol = tempRow.getCell(1).toString();
 		        nsdlMutualFund.setIsin(tempRow.getCell(2).toString());
 		        nsdlMutualFund.setUnits(Float.parseFloat(tempRow.getCell(4).toString()));
-		        nsdlMutualFund.setCurrentValue(Double.parseDouble(tempRow.getCell(9).toString()));
+		        nsdlMutualFund.setCurrentValue(Double.parseDouble(tempRow.getCell(9).toString()) * nsdlMutualFund.getUnits());
+		        nsdlMutualFund.setIsinDescription(schemeSymbol);
 		        
 		        mutualFunds.add(nsdlMutualFund);
 		        createAssetForMutualFund(nsdlMutualFund, schemeSymbol, userId, userAssetList, zerodhaResponse.getClientId());
@@ -99,7 +100,7 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 			userAsset.setUserId(userId);
 			userAssetList.forEach(ua -> ua.setNickName(nick));
 			userAsset.setAssets(userAssetList);
-			assetService.saveUserAssetsByUserId(userAsset, "nsdl");
+			assetService.saveUserAssetsByUserId(userAsset, "zerodha");
 			
 		} catch (IllegalStateException | IOException e) {
 			e.printStackTrace();
@@ -146,12 +147,12 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 			userAssets.setAssetProvider(institution);
 			AssetType assetType = new AssetType();
 			assetType.setId(4);
-			assetType.setTypeName("mutualFund");
+			assetType.setTypeName("equity");
 			userAssets.setAssetType(assetType);
 			AssetInstrument assetInstrument = new AssetInstrument();
-			assetInstrument.setId(7);
+			assetInstrument.setId(8);
 			userAssets.setAssetInstrument(assetInstrument);
-			userAssets.setExpectedReturn(10);
+			userAssets.setExpectedReturn(12);
 			userAssets.setEquityDebtName(schemeSymbol);
 			userAssets.setCode(nsdlMutualFund.getIsin());
 			userAssets.setUnits((int) nsdlMutualFund.getUnits());

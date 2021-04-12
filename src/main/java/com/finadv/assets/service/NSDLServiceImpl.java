@@ -316,6 +316,9 @@ public class NSDLServiceImpl implements NSDLService {
 					}
 					if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 						mutualFunds.add(nsdlMutualFund);
+						// Create asset
+						if ("portal".equalsIgnoreCase(source))
+							createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
 					}
 
 				}
@@ -331,7 +334,7 @@ public class NSDLServiceImpl implements NSDLService {
 			doc.close();
 
 			if ("portal".equalsIgnoreCase(source) && !userAssetList.isEmpty()) {
-				String nick = email;
+				String nick = email.trim().replaceAll(" ", "").toLowerCase();
 				UserAsset userAsset = new UserAsset();
 				userAsset.setUserId(userId);
 				userAssetList.forEach(ua -> ua.setNickName(nick));
@@ -368,6 +371,34 @@ public class NSDLServiceImpl implements NSDLService {
 			userAssets.setEquityDebtName(nsdlEquity.getStockSymbol());
 			userAssets.setCode(nsdlEquity.getIsin());
 			userAssets.setUnits((int) nsdlEquity.getShares());
+
+			userAssets.setUserId(userId);
+			userAssetList.add(userAssets);
+		}
+
+	}
+	
+	private void createAssetForMutualFund(NSDLMutualFund mutualFund, Long userId, List<UserAssets> userAssetList,
+			String holderName) {
+		if (mutualFund.getCurrentValue() != 0) {
+			UserAssets userAssets = new UserAssets();
+			userAssets.setAmount(mutualFund.getCurrentValue());
+			userAssets.setHolderName(holderName);
+			userAssets.setCreatedAt(LocalDateTime.now());
+			Institution institution = new Institution();
+			institution.setId(1);
+			userAssets.setAssetProvider(institution);
+			AssetType assetType = new AssetType();
+			assetType.setId(4);
+			assetType.setTypeName("equity");
+			userAssets.setAssetType(assetType);
+			AssetInstrument assetInstrument = new AssetInstrument();
+			assetInstrument.setId(8);
+			userAssets.setAssetInstrument(assetInstrument);
+			userAssets.setExpectedReturn(10);
+			userAssets.setEquityDebtName(mutualFund.getIsinDescription());
+			userAssets.setCode(mutualFund.getIsin());
+			userAssets.setUnits((int) mutualFund.getUnits());
 
 			userAssets.setUserId(userId);
 			userAssetList.add(userAssets);

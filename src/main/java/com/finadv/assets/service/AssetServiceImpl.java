@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -37,6 +38,8 @@ import com.finadv.assets.entities.CurrentGrowthResponse;
 import com.finadv.assets.entities.CurrentGrowthResponseList;
 import com.finadv.assets.entities.FundDataList;
 import com.finadv.assets.entities.FundDataResponse;
+import com.finadv.assets.entities.MutualFundData;
+import com.finadv.assets.entities.MutualFundDataList;
 import com.finadv.assets.entities.PortfolioHistory;
 import com.finadv.assets.entities.StockData;
 import com.finadv.assets.entities.StockDataList;
@@ -161,7 +164,7 @@ public class AssetServiceImpl implements AssetService {
 
 		// Check with email for mf or stock asset and on every cams/nsdl update removew
 		// and recreate user asset
-		if ("cams".equalsIgnoreCase(source) || "nsdl".equalsIgnoreCase(source)) {
+		if ("cams".equalsIgnoreCase(source)) {
 			// delete existing asset to recreate
 			int assetInstrumentId = "cams".equalsIgnoreCase(source) ? 8 : 7;
 			userAssetRepository.deleteUserAssetByUserIdEmailAndInstrument(userAsset.getUserId(),
@@ -169,7 +172,45 @@ public class AssetServiceImpl implements AssetService {
 
 			// Now add all the new assets from cams/nsdl
 			userAssetRepository.saveAll(userAsset.getAssets());
-		} else {
+		} else if ("nsdl".equalsIgnoreCase(source) || "cdsl".equalsIgnoreCase(source)
+				|| "zerodha".equalsIgnoreCase(source)) {
+			Set<Long> assetTypeSet = userAsset.getAssets().stream().map(a -> a.getAssetInstrument().getId())
+					.collect(Collectors.toSet());
+			userAssetRepository.deleteUserAssetByUserIdEmailAndInInstrument(userAsset.getUserId(),
+					userAsset.getAssets().get(0).getNickName(), assetTypeSet);
+
+			// Set proper rtCode for mutual fund ISIN
+			// Get equity MF ISIN list
+			String mfIsinList = userAsset.getAssets().stream()
+					.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 8
+							&& a.getCode().matches("^(INF)[a-zA-Z0-9]{9,}$"))
+					.map(UserAssets::getCode).collect(Collectors.joining(","));
+			if (StringUtils.isNoneEmpty(mfIsinList)) {
+				MutualFundDataList mutualFundDataList = new MutualFundDataList();
+				mutualFundDataList = getMFData(mfIsinList);
+
+				for (UserAssets u : userAsset.getAssets()) {
+					if (u.getAssetInstrument().getId() == 8) {
+						MutualFundData mfd = mutualFundDataList.getResponse().stream()
+								.filter(x -> !StringUtils.isEmpty(u.getCode())
+										&& !StringUtils.isEmpty(x.getIsincodedirect())
+										&& !StringUtils.isEmpty(x.getIsincoderegular())
+										&& (x.getIsincodedirect().equalsIgnoreCase(u.getCode())
+												|| x.getIsincoderegular().equals(u.getCode())))
+								.findFirst().orElse(null);
+						if (mfd != null && StringUtils.isNotEmpty(mfd.getRtcode())) {
+							u.setCode(mfd.getRtcode());
+						}
+					}
+				}
+			}
+
+			// Now add all the new assets from cams/nsdl
+			userAssetRepository.saveAll(userAsset.getAssets());
+
+		}
+
+		else {
 			/*
 			 * for (UserAssets userAssets : userAsset.getAssets()) { if
 			 * ((userAssets.getAssetInstrument().getId() == 8 ||
@@ -404,6 +445,30 @@ public class AssetServiceImpl implements AssetService {
 
 		}
 		return new FundDataList();
+	}
+
+	private MutualFundDataList getMFData(String mfIsinList) {
+		if (!StringUtils.isEmpty(mfIsinList)) {
+			LOG.info("API call to GET details for mutul fund : " + mfIsinList);
+			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getSchemeURL.append(assetUtil.getProperty("fund.mutualfund.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getSchemeURL.toString()).queryParam("isin",
+					mfIsinList.replaceAll(" ", ""));
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<MutualFundDataList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET,
+					entity, MutualFundDataList.class);
+			LOG.info("API Response for GET mutul fund call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return null;
+
 	}
 
 	private StockDataList getStockDetails(String equityStockISINList) {

@@ -105,24 +105,24 @@ public class CDSLServiceImpl implements CDSLService {
 			for (String line : lines) {
 				if (line.toLowerCase().contains("statement for the period")) {
 					nsdlReponse.setPeriod((Stream.of(line.split(" ")).reduce((first, last) -> last).get()));
-					System.out.println("Period: " + (Stream.of(line.split(" ")).reduce((first, last) -> last).get()));
+					//System.out.println("Period: " + (Stream.of(line.split(" ")).reduce((first, last) -> last).get()));
 				}
 
 				if (!flagGrandTotal && line.toLowerCase().contains("grand total")) {
 					flagGrandTotal = true;
 					nsdlReponse.setAmount(
 							Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
-					System.out.println("grand total: " + Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
+					//System.out.println("grand total: " + Double.parseDouble(line.toLowerCase().split("grand total")[1].trim().replace(",", "")));
 				}
 				if (line.contains("CAS ID:") || line.contains("NSDL ID")) {
 					nsdlReponse.setHolderName(lines[linecounter+1]);
-					System.out.println("Holder Name  " + lines[linecounter+1]);
+					//System.out.println("Holder Name  " + lines[linecounter+1]);
 				}
 				if (line.contains("Email Id :")) {
 					email = Stream.of(line.split(" ")).reduce((first, last) -> last).get();
 					if (email.equalsIgnoreCase("Not Registered"))
 						email = "";
-					System.out.println("Email Id : " + email);
+					//System.out.println("Email Id : " + email);
 				}
 				// Get portfolio distribution
 				if (line.contains("Assets Class Value in ` %")) {
@@ -136,13 +136,13 @@ public class CDSLServiceImpl implements CDSLService {
 					nsdlAssetAmount.setMutualFundFolios(
 							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
 									.longValue());
-					System.out.println("MF Folio: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
-					.longValue());
+					//System.out.println("MF Folio: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
+					//.longValue());
 					nsdlAssetAmount.setMutualFunds(
 							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
 									.longValue());
-					System.out.println("MF: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
-					.longValue());
+					//System.out.println("MF: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
+					//.longValue());
 //					nsdlAssetAmount.setCorporateBonds(
 //							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 4].replaceAll(",", ""))))
 //									.longValue());
@@ -181,7 +181,7 @@ public class CDSLServiceImpl implements CDSLService {
 							System.out.print(trendSplit[3] + " ");
 						if(trendSplit.length >= 5)
 							System.out.print(trendSplit[4] + " ");
-						System.out.println();
+						//System.out.println();
 						valuetrend.add(nsdlValueTrend);
 					}
 				}
@@ -280,7 +280,7 @@ public class CDSLServiceImpl implements CDSLService {
 							if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
 								nsdlMutualFund.setIsin(line.trim());
 								int track = 0;
-								System.out.println("Isin: " + line.trim());
+								//System.out.println("Isin: " + line.trim());
 								StringBuilder mfISINDescription = new StringBuilder();
 								for (int i = 1; i <= 10; i++) {
 									if (lines[linecounter + i + 1].trim().contains(".")
@@ -296,15 +296,19 @@ public class CDSLServiceImpl implements CDSLService {
 								}
 								if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 									nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
-									System.out.println("SecurityName: " + mfISINDescription.toString());
+									//System.out.println("SecurityName: " + mfISINDescription.toString());
 									nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[0].replaceAll(",", "").trim()));
-									System.out.println("Units: " + Float.parseFloat(lineSplit[0].replaceAll(",", "").trim()));
+									//System.out.println("Units: " + Float.parseFloat(lineSplit[0].replaceAll(",", "").trim()));
 									// Current value
 									nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[6].replaceAll(",", "").trim()));
-									System.out.println("Current Value: " + Double.parseDouble(lineSplit[6].replaceAll(",", "").trim()));
+									//System.out.println("Current Value: " + Double.parseDouble(lineSplit[6].replaceAll(",", "").trim()));
 								}
-								if (nsdlMutualFund.getIsin()!=null)
+								if (nsdlMutualFund.getIsin()!=null) {
 									mutualFunds.add(nsdlMutualFund);
+									if ("portal".equalsIgnoreCase(source))
+										createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
+								}
+									
 							} 
 //							else {
 //								lineSplit = line.trim().split(" ");
@@ -385,19 +389,23 @@ public class CDSLServiceImpl implements CDSLService {
 									mfISINDescription.append(" ").append(lineSplit[k]);
 								}
 								nsdlMutualFund.setIsin(lineSplit[k].trim());
-								System.out.println("Isin: " + lineSplit[k].trim());
+								//System.out.println("Isin: " + lineSplit[k].trim());
 								
 								if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 									nsdlMutualFund.setIsinDescription(mfISINDescription.toString());
-									System.out.println("SecurityName: " + mfISINDescription.toString());
+									//System.out.println("SecurityName: " + mfISINDescription.toString());
 									nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[k+2].replaceAll(",", "").trim()));
-									System.out.println("Units: " + Float.parseFloat(lineSplit[k+2].replaceAll(",", "").trim()));
+									//System.out.println("Units: " + Float.parseFloat(lineSplit[k+2].replaceAll(",", "").trim()));
 									// Current value
 									nsdlMutualFund.setCurrentValue(Double.parseDouble(lineSplit[k+5].replaceAll(",", "").trim()));
-									System.out.println("Current Value: " + Double.parseDouble(lineSplit[k+5].replaceAll(",", "").trim()));
+									//System.out.println("Current Value: " + Double.parseDouble(lineSplit[k+5].replaceAll(",", "").trim()));
 								}
-								if (nsdlMutualFund.getIsin()!=null)
+								if (nsdlMutualFund.getIsin()!=null) {
 									mutualFunds.add(nsdlMutualFund);
+									if ("portal".equalsIgnoreCase(source))
+										createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
+								}
+									
 							}
 						}
 						linecounter++;
@@ -416,7 +424,7 @@ public class CDSLServiceImpl implements CDSLService {
 			doc.close();
 
 			if ("portal".equalsIgnoreCase(source) && !userAssetList.isEmpty()) {
-				String nick = email;
+				String nick = email.trim().replaceAll(" ", "").toLowerCase();
 				UserAsset userAsset = new UserAsset();
 				userAsset.setUserId(userId);
 				userAssetList.forEach(ua -> ua.setNickName(nick));
@@ -459,6 +467,34 @@ public class CDSLServiceImpl implements CDSLService {
 		}
 
 	}
+	
+	private void createAssetForMutualFund(NSDLMutualFund mutualFund, Long userId, List<UserAssets> userAssetList,
+			String holderName) {
+		if (mutualFund.getCurrentValue() != 0) {
+			UserAssets userAssets = new UserAssets();
+			userAssets.setAmount(mutualFund.getCurrentValue());
+			userAssets.setHolderName(holderName);
+			userAssets.setCreatedAt(LocalDateTime.now());
+			Institution institution = new Institution();
+			institution.setId(1);
+			userAssets.setAssetProvider(institution);
+			AssetType assetType = new AssetType();
+			assetType.setId(4);
+			assetType.setTypeName("equity");
+			userAssets.setAssetType(assetType);
+			AssetInstrument assetInstrument = new AssetInstrument();
+			assetInstrument.setId(8);
+			userAssets.setAssetInstrument(assetInstrument);
+			userAssets.setExpectedReturn(10);
+			userAssets.setEquityDebtName(mutualFund.getIsinDescription());
+			userAssets.setCode(mutualFund.getIsin());
+			userAssets.setUnits((int) mutualFund.getUnits());
+
+			userAssets.setUserId(userId);
+			userAssetList.add(userAssets);
+		}
+
+	}
 
 	private String stringSplit(String str) {
 		String[] strSplit = str.trim().split(" ");
@@ -467,21 +503,21 @@ public class CDSLServiceImpl implements CDSLService {
 
 	private void getAnalysisData(NSDLReponse nsdlReponse, String email, String fileName, String password) {
 		// Get mutual fund underlying stocks
-		System.out.println("1");
+		//System.out.println("1");
 		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
 				nsdlReponse.getNsdlMutualFunds());
-		System.out.println("2");
+		//System.out.println("2");
 		mutualFundAnalysisResponseList.getMfaResponse()
 				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
-		System.out.println("3");
+		//System.out.println("3");
 		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());
-		System.out.println("4");
+		//System.out.println("4");
 		nsdlReponse.setMfAnalyzed(mutualFundAnalysisResponseList.getMfAnalyzed());
-		System.out.println("5");
+		//System.out.println("5");
 		nsdlReponse.setMfNotAnalyzed(mutualFundAnalysisResponseList.getMfNotAnalyzed());
-		System.out.println("6");
+		//System.out.println("6");
 		nsdlReponse.setMfGrowthAnalysis(mutualFundAnalysisResponseList.getMfGrowthAnalysis());
-		System.out.println("7");
+		//System.out.println("7");
 		// Get equity details and sectors
 		// Get equity Stock ISIN list
 		if (nsdlReponse.getNsdlEquities().size() > 0) {
@@ -491,7 +527,7 @@ public class CDSLServiceImpl implements CDSLService {
 			// Calculate sector details for equities
 			calculateSectorForEquities(nsdlReponse.getNsdlEquities(), stockDataList, nsdlReponse);
 		}
-		System.out.println("8");
+		//System.out.println("8");
 		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
 				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(),
 						(float) ((m.getAmount()
@@ -543,16 +579,16 @@ public class CDSLServiceImpl implements CDSLService {
 
 			}
 		}
-		System.out.println("8");
+		//System.out.println("8");
 		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
 		// Testing
-		System.out.println("9");
+		//System.out.println("9");
 		double suma = overallStock.stream().filter(o -> o.getEquityPercentage() > 1)
 				.mapToDouble(OverallStockData::getEquityPercentage).sum();
 		double sumb = overallStock.stream().filter(o -> o.getEquityPercentage() < 1)
 				.mapToDouble(OverallStockData::getEquityPercentage).sum();
 		System.out.println(suma + "*****************" + sumb);
-		System.out.println("10");
+		//System.out.println("10");
 		nsdlReponse.setOverallStock(overallStock);
 		
 		// Calculate mf sector details
