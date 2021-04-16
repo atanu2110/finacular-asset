@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -52,6 +53,7 @@ import com.finadv.assets.entities.StockData;
 import com.finadv.assets.entities.StockDataList;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
+import com.finadv.assets.error.RestServiceException;
 import com.finadv.assets.util.AssetUtil;
 
 /**
@@ -344,7 +346,7 @@ public class NSDLServiceImpl implements NSDLService {
 				getAnalysisData(nsdlReponse, email, nsdlFile.getOriginalFilename(), password);
 			}
 		} catch (IllegalStateException | IOException e) {
-			e.printStackTrace();
+			throw new RestServiceException(HttpStatus.BAD_REQUEST, e);
 		}
 
 		return nsdlReponse;
@@ -395,7 +397,7 @@ public class NSDLServiceImpl implements NSDLService {
 			AssetInstrument assetInstrument = new AssetInstrument();
 			assetInstrument.setId(8);
 			userAssets.setAssetInstrument(assetInstrument);
-			userAssets.setExpectedReturn(10);
+			userAssets.setExpectedReturn(12);
 			userAssets.setEquityDebtName(mutualFund.getIsinDescription());
 			userAssets.setCode(mutualFund.getIsin());
 			userAssets.setUnits((int) mutualFund.getUnits());
