@@ -12,7 +12,22 @@ public class OverallStockData {
 
 	private float overallPercentage;
 
+	private long mfInvestment;
+
+	private long directInvestment;
+
 	private String sector;
+
+	public OverallStockData(String stockSymbol, double currentValue, float overallPercentage, long mfInvestment,
+			long directInvestment, String sector) {
+		super();
+		this.stockSymbol = stockSymbol;
+		this.currentValue = currentValue;
+		this.overallPercentage = overallPercentage;
+		this.mfInvestment = mfInvestment;
+		this.directInvestment = directInvestment;
+		this.sector = sector;
+	}
 
 	public OverallStockData(String stockSymbol, double currentValue, float overallPercentage, String sector) {
 		super();
@@ -53,6 +68,22 @@ public class OverallStockData {
 
 	public void setSector(String sector) {
 		this.sector = sector;
+	}
+
+	public long getMfInvestment() {
+		return mfInvestment;
+	}
+
+	public void setMfInvestment(long mfInvestment) {
+		this.mfInvestment = mfInvestment;
+	}
+
+	public long getDirectInvestment() {
+		return directInvestment;
+	}
+
+	public void setDirectInvestment(long directInvestment) {
+		this.directInvestment = directInvestment;
 	}
 
 }

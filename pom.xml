@@ -131,6 +131,11 @@
 			<artifactId>aws-java-sdk-ses</artifactId>
 			<version>1.11.911</version>
 		</dependency>
+		 <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk</artifactId>
+        <version>1.11.911</version>
+    </dependency>
 		<dependency>
 			<groupId>org.thymeleaf</groupId>
 			<artifactId>thymeleaf-spring5</artifactId>

@@ -2,6 +2,9 @@ package com.finadv.assets.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -88,6 +92,16 @@ public class NSDLServiceImpl implements NSDLService {
 	@Override
 	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId, String source) {
 		String temDirectory = "java.io.tmpdir";
+		/*
+		 * Path path = Paths.get(temDirectory + "/finacular"); if (!Files.exists(path))
+		 * {
+		 * 
+		 * try { Files.createDirectory(path); } catch (IOException e) { throw new
+		 * RestServiceException(HttpStatus.BAD_REQUEST, e); } } else { throw new
+		 * RestServiceException(HttpStatus.BAD_REQUEST,
+		 * "Cannot create finacular diirectory"); }
+		 */
+
 		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename()
 				+ RandomStringUtils.random(4, true, true));
 		PDDocument doc;
@@ -320,13 +334,14 @@ public class NSDLServiceImpl implements NSDLService {
 						mutualFunds.add(nsdlMutualFund);
 						// Create asset
 						if ("portal".equalsIgnoreCase(source))
-							createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
+							createAssetForMutualFund(nsdlMutualFund, userId, userAssetList,
+									nsdlReponse.getHolderName());
 					}
 
 				}
 
 				linecounter++;
-			//	System.out.println(line);
+				// System.out.println(line);
 			}
 
 			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
@@ -334,7 +349,8 @@ public class NSDLServiceImpl implements NSDLService {
 			nsdlReponse.setNsdlValueTrend(valuetrend);
 			nsdlReponse.setNsdlMutualFunds(mutualFunds);
 			doc.close();
-
+			// Delete file
+			// FileUtils.deleteQuietly(tempNSDLFile);
 			if ("portal".equalsIgnoreCase(source) && !userAssetList.isEmpty()) {
 				String nick = email.trim().replaceAll(" ", "").toLowerCase();
 				UserAsset userAsset = new UserAsset();
@@ -348,7 +364,8 @@ public class NSDLServiceImpl implements NSDLService {
 		} catch (IllegalStateException | IOException e) {
 			throw new RestServiceException(HttpStatus.BAD_REQUEST, e);
 		}
-
+		// Store file in S3
+		asyncService.uploadFile(tempNSDLFile);
 		return nsdlReponse;
 	}
 
@@ -379,7 +396,7 @@ public class NSDLServiceImpl implements NSDLService {
 		}
 
 	}
-	
+
 	private void createAssetForMutualFund(NSDLMutualFund mutualFund, Long userId, List<UserAssets> userAssetList,
 			String holderName) {
 		if (mutualFund.getCurrentValue() != 0) {
@@ -438,7 +455,7 @@ public class NSDLServiceImpl implements NSDLService {
 						(float) ((m.getAmount()
 								/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
 								* 100),
-						m.getIndustry()))
+						(long) m.getAmount(), 0, m.getIndustry()))
 				.collect(Collectors.toList());
 		if (nsdlReponse.getNsdlEquities().size() > 0) {
 			for (NSDLEquity equity : nsdlReponse.getNsdlEquities()) {
@@ -472,13 +489,14 @@ public class NSDLServiceImpl implements NSDLService {
 							.setEquityPercentage((float) ((overallStock.get(indexMatch).getCurrentValue()
 									/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
 									* 100));
-
+					overallStock.get(indexMatch).setDirectInvestment(
+							(long) (overallStock.get(indexMatch).getDirectInvestment() + equity.getCurrentValue()));
 				} else {
 					OverallStockData o = new OverallStockData(equity.getStockSymbol(), equity.getCurrentValue(),
 							(float) ((equity.getCurrentValue()
 									/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
 									* 100),
-							equity.getIndustry());
+							0, (long) equity.getCurrentValue(), equity.getIndustry());
 					overallStock.add(o);
 				}
 

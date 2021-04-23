@@ -6,6 +6,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.finadv.assets.config.AmazonConfig;
 import com.finadv.assets.entities.NSDLUserData;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
@@ -25,6 +29,10 @@ import com.finadv.assets.entities.UserInvestment;
 import com.finadv.assets.entities.UserInvestmentList;
 import com.finadv.assets.repository.NSDLUserDataRepository;
 import com.finadv.assets.util.AssetUtil;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 
 @Service
 public class AsyncService {
@@ -38,6 +46,9 @@ public class AsyncService {
 
 	@Autowired
 	private AssetUtil assetUtil;
+
+	@Autowired
+	private AmazonS3 amazonS3Client;
 
 	@Autowired
 	public void setNsdlUserDataRepository(NSDLUserDataRepository nsdlUserDataRepository) {
@@ -120,4 +131,27 @@ public class AsyncService {
 
 	}
 
+	@Async
+	public void uploadFile(File uploadedFile) {
+		LOG.info("Inside uploadFile : Upload file to S3 for record!!");
+		//File file = convertMultiPartFileToFile(multipartFile);
+		uploadFileToS3bucket(uploadedFile, "finacular-files");
+		//Delete the file
+		FileUtils.deleteQuietly(uploadedFile);
+	}
+
+	private void uploadFileToS3bucket(File file, String bucketName) {
+		amazonS3Client.putObject(new PutObjectRequest(bucketName, "/nsdl/"+ file.getName(), file));
+
+	}
+
+	private File convertMultiPartFileToFile(MultipartFile file) {
+		File convertedFile = new File(file.getOriginalFilename());
+		try (FileOutputStream fos = new FileOutputStream(convertedFile)) {
+			fos.write(file.getBytes());
+		} catch (IOException e) {
+			LOG.error("Error converting multipartFile to file", e);
+		}
+		return convertedFile;
+	}
 }
