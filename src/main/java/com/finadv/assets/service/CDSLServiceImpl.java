@@ -129,37 +129,46 @@ public class CDSLServiceImpl implements CDSLService {
 				// Get portfolio distribution
 				if (line.contains("Assets Class Value in ` %")) {
 					NSDLAssetAmount nsdlAssetAmount = new NSDLAssetAmount();
-//					nsdlAssetAmount.setEquities(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
-//									.longValue());
-//					nsdlAssetAmount.setPreferenceShares(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
-//									.longValue());
-					nsdlAssetAmount.setMutualFundFolios(
-							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
+					int i=1;
+					while(!lines[linecounter+i].contains("Total")) {
+						if(lines[linecounter+i].contains("Equity"))
+							nsdlAssetAmount.setEquities(
+									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 									.longValue());
-					//System.out.println("MF Folio: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 1].replaceAll(",", ""))))
-					//.longValue());
-					nsdlAssetAmount.setMutualFunds(
-							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
+//						if(lines[linecounter+i].contains("Preference Shares"))
+//							nsdlAssetAmount.setPreferenceShares(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
+//									.longValue());
+						if(lines[linecounter+i].contains("Mutual Fund Folios"))
+							nsdlAssetAmount.setMutualFundFolios(
+									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 									.longValue());
-					//System.out.println("MF: " + Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 2].replaceAll(",", ""))))
-					//.longValue());
-//					nsdlAssetAmount.setCorporateBonds(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 4].replaceAll(",", ""))))
+						if(lines[linecounter+i].contains("Mutual Funds Held in Demat Form"))
+							nsdlAssetAmount.setMutualFunds(
+									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
+									.longValue());
+//						if(lines[linecounter+i].contains(""))
+//							nsdlAssetAmount.setCorporateBonds(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 //									.longValue());
-//					nsdlAssetAmount.setMoneyMarketInstruments(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 5].replaceAll(",", ""))))
+//						if(lines[linecounter+i].contains(""))
+//							nsdlAssetAmount.setMoneyMarketInstruments(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 //									.longValue());
-//					nsdlAssetAmount.setSecuritisedInstruments(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 6].replaceAll(",", ""))))
+//						if(lines[linecounter+i].contains(""))
+//							nsdlAssetAmount.setSecuritisedInstruments(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 //									.longValue());
-//					nsdlAssetAmount.setGovernmentSecurities(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 7].replaceAll(",", ""))))
+//						if(lines[linecounter+i].contains(""))
+//							nsdlAssetAmount.setGovernmentSecurities(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 //									.longValue());
-//					nsdlAssetAmount.setPostalSavingScheme(
-//							Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + 8].replaceAll(",", ""))))
+//						if(lines[linecounter+i].contains(""))
+//							nsdlAssetAmount.setPostalSavingScheme(
+//									Double.valueOf(Double.parseDouble(stringSplit(lines[linecounter + i].replaceAll(",", ""))))
 //									.longValue());
+						i++;
+					}
 
 					nsdlReponse.setNsdlAssetAmount(nsdlAssetAmount);
 				}
@@ -273,16 +282,15 @@ public class CDSLServiceImpl implements CDSLService {
 					linecounter += 13; 
 					String tempLine = line;
 					line = lines[linecounter];
-					while (!(line.contains("HOLDING STATEMENT") && line.contains("(Other Details)"))) {
+					while (!(line.contains("HOLDING STATEMENT") && line.contains("(Other Details)")) && !line.contains("Portfolio Value")) {
 						
-						if ((line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INF).*"))
-								&& !line.trim().contains("INFRA")) {
+						lineSplit = line.trim().split(" ");
+						if ((lineSplit[0].trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || lineSplit[0].trim().matches("^(INF).*"))
+								&& !lineSplit[0].trim().contains("INFRA")) {
 							NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
-							
-							if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
+							if (lineSplit[0].matches("^(INF)[a-zA-Z0-9]{9,}$")) {
 								nsdlMutualFund.setIsin(line.trim());
 								int track = 0;
-								//System.out.println("Isin: " + line.trim());
 								StringBuilder mfISINDescription = new StringBuilder();
 								for (int i = 1; i <= 10; i++) {
 									if (lines[linecounter + i + 1].trim().contains(".")
@@ -312,47 +320,57 @@ public class CDSLServiceImpl implements CDSLService {
 								}
 									
 							} 
-//							else {
-//								lineSplit = line.trim().split(" ");
-//								nsdlMutualFund.setIsin(lineSplit[0]);
-//
-//								if (lineSplit[lineSplit.length - 1].trim().contains(".")
-//										|| lineSplit[lineSplit.length - 1].trim().contains(",")) {
-//									nsdlMutualFund.setUnits(
-//											Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()));
-//									nsdlMutualFund.setIsinDescription(
-//											String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
-//								} else {
-//									nsdlMutualFund.setIsinDescription(
-//											String.join(" ", Arrays.copyOfRange(lineSplit, 1, lineSplit.length - 1)));
-//									for (int i = 1; i <= 5; i++) {
-//										if (lines[linecounter + i + 1].trim().contains(".")
-//												|| lines[linecounter + i + 1].trim().contains(",")) {
-//											lineSplit = lines[linecounter + i + 1].split(" ");
-//											nsdlMutualFund.setUnits(Float.parseFloat(lineSplit[0].replaceAll(",", "").trim()));
-//											break;
-//
-//										}
-//									}
-//
-//								}
-//
-//								for (int i = 8; i <= 12; i++) {
-//									if (lines[linecounter + i + 1].trim().contains("Total")
-//											|| lines[linecounter + i + 1].trim().matches("^(INF).*")
-//											|| lines[linecounter + i + 1].trim().contains("Consolidated Account Statement")) {
-//										lineSplit = lines[linecounter + i].split(" ");
-//										nsdlMutualFund.setCurrentValue(Double.parseDouble(
-//												lineSplit[lineSplit.length - 1].trim().replaceAll(",", "").trim()));
-//										break;
-//									}
-//
-//								}
-//
-//							}
-//							if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
-//								mutualFunds.add(nsdlMutualFund);
-//							}
+						}else if(lineSplit[0].trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || lineSplit[0].trim().matches("^(INE).*")) {
+							NSDLEquity nsdlEquity = new NSDLEquity();
+							int end = 0;
+							ArrayList<String> extralineSplit = new ArrayList<String>();
+							for(String ele:lineSplit)
+								extralineSplit.add(ele);
+							
+							for (int i = 0; i <= 5; i++) {
+								if (lines[linecounter + i + 1].trim().contains("Page")
+										|| lines[linecounter + i + 1].trim().split(" ")[0].matches("^(INE).*") 
+										|| lines[linecounter + i + 1].trim().split(" ")[0].matches("^(INE)[a-zA-Z0-9]{9,}$")
+										|| lines[linecounter + i + 1].trim().contains("Portfolio")
+										|| (lines[linecounter + i + 1].trim().contains("HOLDING STATEMENT") 
+												&& lines[linecounter + i + 1].trim().contains("(Other Details)"))) {
+									end = i;
+									break;
+								}
+							}
+							for (int j = linecounter + 1; j <= linecounter + end; j++) {
+								lineSplit = lines[j].trim().split(" ");
+								for(String ele:lineSplit)
+									extralineSplit.add(ele);
+							}
+							nsdlEquity.setIsin(extralineSplit.get(0));
+//							System.out.println("ISIN: " + extralineSplit.get(0));
+							StringBuilder symbol = new StringBuilder();
+							int i=1;
+							for(;i<extralineSplit.size();i++) {
+								if(!(extralineSplit.get(i).contains(".")) 
+										|| extralineSplit.get(i).contains("RS.")
+										|| extralineSplit.get(i).contains("RE.")) {
+									symbol.append(extralineSplit.get(i));
+									symbol.append(" ");
+								} else {
+									break;										
+								}
+							}
+							nsdlEquity.setStockSymbol(symbol.toString().trim());
+//							System.out.println("SYMBOL: " + symbol.toString().trim());
+							if(i<extralineSplit.size()) {
+								nsdlEquity.setShares(
+										(long)Float.parseFloat(extralineSplit.get(i).replaceAll(",", "").trim()));
+//								System.out.println((long)Float.parseFloat(extralineSplit.get(i).replaceAll(",", "").trim()));
+							}
+							nsdlEquity.setCurrentValue(Double.parseDouble(extralineSplit.get(extralineSplit.size()-1).replaceAll(",", "").trim()));
+//							System.out.println("Value: " + extralineSplit.get(extralineSplit.size()-1).replaceAll(",", "").trim());
+							nsdlEquities.add(nsdlEquity);
+							
+							// Create asset
+							if ("portal".equalsIgnoreCase(source))
+								createAssetForEquities(nsdlEquity, userId, userAssetList, nsdlReponse.getHolderName());
 						}
 						linecounter++;
 						line = lines[linecounter];
@@ -419,7 +437,7 @@ public class CDSLServiceImpl implements CDSLService {
 				linecounter++;
 	//			System.out.println(line);
 			}
-//			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
+			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
 			nsdlReponse.setNsdlEquities(nsdlEquities);
 			nsdlReponse.setNsdlValueTrend(valuetrend);
 			nsdlReponse.setNsdlMutualFunds(mutualFunds);
