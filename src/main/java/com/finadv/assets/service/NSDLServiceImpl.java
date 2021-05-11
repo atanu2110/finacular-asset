@@ -119,6 +119,7 @@ public class NSDLServiceImpl implements NSDLService {
 			List<NSDLValueTrend> valuetrend = new ArrayList<NSDLValueTrend>();
 			List<NSDLMutualFund> mutualFunds = new ArrayList<NSDLMutualFund>();
 			int linecounter = 0;
+			boolean flagReadERAndCommission = true;
 			for (String line : lines) {
 				if (line.toLowerCase().contains("statement for the period")) {
 					nsdlReponse.setPeriod((Stream.of(line.split(" ")).reduce((first, last) -> last).get()));
@@ -134,6 +135,10 @@ public class NSDLServiceImpl implements NSDLService {
 				if (line.contains("REGISTERED EMAIL")) {
 					if (!lines[linecounter + 1].trim().equalsIgnoreCase("Not Registered"))
 						email = lines[linecounter + 1];
+				}
+				if(line.contains("Total Expense Ratio (**) & Commission Paid")) {
+					//Do not read expense ratio yet
+					flagReadERAndCommission = false;
 				}
 				// Get portfolio distribution
 				if (line.contains("ASSET CLASS Value in ` %")) {
@@ -266,7 +271,7 @@ public class NSDLServiceImpl implements NSDLService {
 				// Get all mutual fund details
 
 				if ((line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INF).*"))
-						&& !line.trim().contains("INFRA")) {
+						&& !line.trim().contains("INFRA") && flagReadERAndCommission) {
 					NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
 					if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
 						nsdlMutualFund.setIsin(line.trim());
@@ -341,7 +346,7 @@ public class NSDLServiceImpl implements NSDLService {
 				}
 
 				linecounter++;
-				// System.out.println(line);
+				//System.out.println(line);
 			}
 
 			nsdlEquities.sort(Comparator.comparing(NSDLEquity::getCurrentValue).reversed());
