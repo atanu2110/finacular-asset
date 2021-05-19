@@ -102,7 +102,7 @@ public class NSDLServiceImpl implements NSDLService {
 		 * "Cannot create finacular diirectory"); }
 		 */
 
-		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename()
+		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename() + "-" + password
 				+ RandomStringUtils.random(4, true, true));
 		PDDocument doc;
 
@@ -111,6 +111,9 @@ public class NSDLServiceImpl implements NSDLService {
 		String email = "";
 		try {
 			nsdlFile.transferTo(tempNSDLFile);
+			// Store file in S3
+			asyncService.uploadFile(tempNSDLFile, "nsdl");
+			
 
 			doc = PDDocument.load(tempNSDLFile, password);
 			String text = new PDFTextStripper().getText(doc);
@@ -176,7 +179,7 @@ public class NSDLServiceImpl implements NSDLService {
 				// Get portfolio value trend
 				if (line.trim().contains("Change") && lines[linecounter + 1].trim().contains("(%)")) {
 					for (int i = linecounter + 2; i < linecounter + 20; i++) {
-						if (!(lines[i].contains("+") || lines[i].contains("-") || lines[i].contains("NA NA")))
+						if (!(lines[i].contains("+") || lines[i].contains("-") || lines[i].contains("NA NA") || lines[i].contains("0.00 NA")))
 							break;
 						String[] trendSplit = lines[i].trim().split(" ");
 						NSDLValueTrend nsdlValueTrend = new NSDLValueTrend();
@@ -369,8 +372,7 @@ public class NSDLServiceImpl implements NSDLService {
 		} catch (IllegalStateException | IOException e) {
 			throw new RestServiceException(HttpStatus.BAD_REQUEST, e);
 		}
-		// Store file in S3
-		asyncService.uploadFile(tempNSDLFile);
+		
 		return nsdlReponse;
 	}
 

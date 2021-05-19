@@ -73,11 +73,11 @@ public class SeleniumService {
 
 		// Automate CAMS
         LOG.info("Calling automate request !! ");
-		//automateCAMSEmail(email, password.toString());
+		automateCAMSEmail(email, password.toString());
         
 		// Send mail from Finacular with password in body
         LOG.info("Sending mail to user from Finacular server !! ");
-        sendEmail(email , password.toString());
+       // sendEmail(email , password.toString());
 	}
 
 	private void automateCAMSEmail(String email, String password) {
@@ -199,9 +199,9 @@ public class SeleniumService {
 			String html = templateEngine.process("cams_email.html", context);
 			helper.setTo(email);
 			helper.setText(html, true);
-			helper.setSubject("CAMS generated successfully ");
+			helper.setSubject("Finacular | CAMS generated successfully ");
 			//helper.setFrom("noreply@finacular.in");
-			helper.setFrom("atanu.mazumdar2110@gmail.com");
+			helper.setFrom("atanu.mazumdar@finacular.co.in");
 		} catch (MessagingException e) {
 			LOG.error(e.getMessage());
 		}

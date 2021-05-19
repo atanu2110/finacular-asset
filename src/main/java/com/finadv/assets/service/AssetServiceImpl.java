@@ -323,6 +323,7 @@ public class AssetServiceImpl implements AssetService {
 				.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 8)
 				.map(UserAssetsDto::getCode).collect(Collectors.joining(","));
 		FundDataList fundDataList = getSchemeDetails(equityMFISINList);
+		MutualFundDataList mutualFundDataList = getMFData(equityMFISINList);
 		// Get equity Stock ISIN list
 		String equityStockISINList = userAssetDto.getAssets().stream()
 				.filter(a -> a.getAssetType().getId() == 4 && a.getAssetInstrument().getId() == 7)
@@ -353,16 +354,35 @@ public class AssetServiceImpl implements AssetService {
 						uaDto.setSchemeType(fdResponse.getData().getCategory());
 					if (StringUtils.isNoneEmpty(fdResponse.getData().getIsin()))
 						uaDto.setCode(fdResponse.getData().getIsin());
-					if (StringUtils.isNotEmpty(uaDto.getSchemeType())
-							&& uaDto.getSchemeType().equalsIgnoreCase("Debt Scheme")) {
-						uaDto.setExpectedReturn(8);
-						uaDto.getAssetType().setId(2);
-						uaDto.getAssetType().setTypeName("debt");
-						uaDto.getAssetInstrument().setId(5);
-						uaDto.getAssetInstrument().setInstrumentName("Debt Mutual Fund");
-						uaDto.getAssetInstrument().setDefaultReturns(8);
+
+				} else {
+					MutualFundData mutualFundData = mutualFundDataList.getResponse().stream()
+							.filter(x -> (StringUtils.isNoneEmpty(x.getIsincodedirect())
+									&& StringUtils.isNoneEmpty(x.getIsincoderegular()))
+									&& (x.getIsincodedirect().equalsIgnoreCase(uaDto.getCode())
+											|| x.getIsincoderegular().equalsIgnoreCase(uaDto.getCode())))
+							.findFirst().orElse(null);
+					if( mutualFundData != null && mutualFundData.getNav() != 0)
+						uaDto.setCurrentValue(mutualFundData.getNav() * uaDto.getUnits());
+					if (mutualFundData != null) {
+						String schemename = StringUtils.isEmpty(mutualFundData.getSchemenamecmapis())
+								? mutualFundData.getSchemename()
+								: mutualFundData.getSchemenamecmapis();
+						uaDto.setEquityDebtName(schemename);
 					}
 
+					if (mutualFundData != null && StringUtils.isNotEmpty(mutualFundData.getCategory()))
+						uaDto.setSchemeType(mutualFundData.getCategory());
+				}
+				if (StringUtils.isNotEmpty(uaDto.getSchemeType())
+						&& uaDto.getSchemeType().equalsIgnoreCase("Debt Scheme")) {
+					float expectedReturns = uaDto.getEquityDebtName().toLowerCase().contains("liquid") ? 5f : 6.5f;
+					uaDto.setExpectedReturn(expectedReturns);
+					uaDto.getAssetType().setId(2);
+					uaDto.getAssetType().setTypeName("debt");
+					uaDto.getAssetInstrument().setId(5);
+					uaDto.getAssetInstrument().setInstrumentName("Debt Mutual Fund");
+					uaDto.getAssetInstrument().setDefaultReturns(8);
 				}
 
 			} else if (uaDto.getAssetInstrument().getId() == 7) {

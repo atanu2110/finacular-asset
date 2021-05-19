@@ -24,6 +24,8 @@ public class MutualFundData {
 	public String turnoverratio;
 	public String type;
 	public String rtcode;
+	public float nav;
+	public String schemenamecmapis;
 
 	public long getAssetsundermanagement() {
 		return assetsundermanagement;
@@ -168,5 +170,22 @@ public class MutualFundData {
 	public void setRtcode(String rtcode) {
 		this.rtcode = rtcode;
 	}
+
+	public float getNav() {
+		return nav;
+	}
+
+	public void setNav(float nav) {
+		this.nav = nav;
+	}
+
+	public String getSchemenamecmapis() {
+		return schemenamecmapis;
+	}
+
+	public void setSchemenamecmapis(String schemenamecmapis) {
+		this.schemenamecmapis = schemenamecmapis;
+	}
+
 
 }

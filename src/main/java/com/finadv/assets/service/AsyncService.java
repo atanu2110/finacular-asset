@@ -132,16 +132,16 @@ public class AsyncService {
 	}
 
 	@Async
-	public void uploadFile(File uploadedFile) {
+	public void uploadFile(File uploadedFile, String fileType) {
 		LOG.info("Inside uploadFile : Upload file to S3 for record!!");
 		//File file = convertMultiPartFileToFile(multipartFile);
-		uploadFileToS3bucket(uploadedFile, "finacular-files");
+		uploadFileToS3bucket(uploadedFile, "finacular-files", fileType);
 		//Delete the file
 		FileUtils.deleteQuietly(uploadedFile);
 	}
 
-	private void uploadFileToS3bucket(File file, String bucketName) {
-		amazonS3Client.putObject(new PutObjectRequest(bucketName, "/nsdl/"+ file.getName(), file));
+	private void uploadFileToS3bucket(File file, String bucketName, String fileType) {
+		amazonS3Client.putObject(new PutObjectRequest(bucketName, fileType +"/" + file.getName(), file));
 
 	}
 

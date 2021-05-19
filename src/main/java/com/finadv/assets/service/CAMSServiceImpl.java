@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -21,23 +24,49 @@ import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.pdfparser.PDFParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.finadv.assets.dto.UserAssetsDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
 import com.finadv.assets.entities.CAMS;
+import com.finadv.assets.entities.Equity;
+import com.finadv.assets.entities.FundDataList;
+import com.finadv.assets.entities.FundDataResponse;
 import com.finadv.assets.entities.FundInfo;
 import com.finadv.assets.entities.HolderInfo;
 import com.finadv.assets.entities.Institution;
+import com.finadv.assets.entities.MutualFundAnalysis;
+import com.finadv.assets.entities.MutualFundAnalysisResponse;
+import com.finadv.assets.entities.MutualFundAnalysisResponseList;
+import com.finadv.assets.entities.MutualFundAnalysisScheme;
+import com.finadv.assets.entities.NSDLAssetAmount;
+import com.finadv.assets.entities.NSDLEquity;
+import com.finadv.assets.entities.NSDLMutualFund;
+import com.finadv.assets.entities.NSDLReponse;
+import com.finadv.assets.entities.NSDLValueTrend;
+import com.finadv.assets.entities.OverallStockData;
+import com.finadv.assets.entities.PortfolioAnalysisReponse;
+import com.finadv.assets.entities.PortfolioAnalysisRequest;
 import com.finadv.assets.entities.Transaction;
 import com.finadv.assets.entities.UserAsset;
 import com.finadv.assets.entities.UserAssets;
 import com.finadv.assets.error.RestServiceException;
+import com.finadv.assets.util.AssetUtil;
 
 import io.github.jonathanlink.PDFLayoutTextStripper;
 
@@ -50,6 +79,21 @@ public class CAMSServiceImpl implements CAMSService {
 	public void setAssetService(AssetService assetService) {
 		this.assetService = assetService;
 	}
+
+	@Autowired
+	RestTemplate restTemplate;
+
+	@Autowired
+	private AssetUtil assetUtil;
+
+	private AsyncService asyncService;
+
+	@Autowired
+	public void setAsyncService(AsyncService asyncService) {
+		this.asyncService = asyncService;
+	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(CAMSServiceImpl.class);
 
 	public static final String MUTUAL_FUND = "Mutual Fund";
 
@@ -74,17 +118,21 @@ public class CAMSServiceImpl implements CAMSService {
 	 * 
 	 * @param camsFile the multipart cams file.
 	 * @param password file password
-	 * @throws JsonProcessingException 
-	 * @throws IOException exception on parsing pdf.
+	 * @throws JsonProcessingException
+	 * @throws IOException             exception on parsing pdf.
 	 */
 	@Override
-	public String extractMFData(MultipartFile camsFile, String password, Long userId) throws JsonProcessingException {
+	public String extractMFData(MultipartFile camsFile, String password, Long userId, String source)
+			throws JsonProcessingException {
+		LOG.info("Inside extractMFData for cams userId " + userId);
 		String temDirectory = "java.io.tmpdir";
-		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename()
-				+ RandomStringUtils.random(4, true, true));
+		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename() + "-"
+				+ password + RandomStringUtils.random(4, true, true));
 		CAMS camsData = new CAMS();
 		try {
 			camsFile.transferTo(tempCAMSFile);
+			// Store file in S3
+			asyncService.uploadFile(tempCAMSFile, "cams");
 
 			RandomAccessRead rar = new RandomAccessFile(tempCAMSFile, READ_MODE);
 			PDFParser parser = new PDFParser(rar, password);
@@ -259,11 +307,18 @@ public class CAMSServiceImpl implements CAMSService {
 			userAsset.setUserId(userId);
 			userAsset.setAssets(userAssetList);
 			// temp comment
-			assetService.saveUserAssetsByUserId(userAsset, "cams");
+			if ("portal".equalsIgnoreCase(source)) {
+				LOG.info("extractMFData Not saving assets from cams " + camsFile.getOriginalFilename());
+				assetService.saveUserAssetsByUserId(userAsset, "cams");
+			}
+
 			tempCAMSFile.delete();
 			rar.close();
 			cosDoc.close();
 			pdDoc.close();
+
+			LOG.info("Exit extractMFData for cams userId " + userId);
+
 			return new ObjectMapper().writeValueAsString(camsData);
 
 		} catch (IllegalStateException | IOException e) {
@@ -319,4 +374,210 @@ public class CAMSServiceImpl implements CAMSService {
 		return Double.valueOf(amountString.strip().replaceAll(AMOUNT_REGEX, ""));
 	}
 
+	@Override
+	public NSDLReponse portfolioAnalyzeCAMS(MultipartFile camsFile, String password, Long userId, String source)
+			throws IOException {
+		LOG.info("Inside portfolioAnalyzeCAMS for cams file " + camsFile.getOriginalFilename());
+		NSDLReponse nsdlReponse = new NSDLReponse();
+		String data = extractMFData(camsFile, password, userId, source);
+		ObjectMapper objectMapper = new ObjectMapper();
+		CAMS camsData = objectMapper.readValue(data, CAMS.class);
+
+		// Analyse Mutual fund portfolio for the user
+		nsdlReponse.setHolderName(camsData.getHolderInfo().getName());
+
+		// SET TOTAL AMOUNT
+		double mfTotalAmount = camsData.getFundInfoList().stream().mapToDouble(FundInfo::getValuation).sum();
+		nsdlReponse.setAmount(mfTotalAmount);
+
+		nsdlReponse.setNsdlEquities(new ArrayList<NSDLEquity>());
+		// Mutual fund setters
+		List<NSDLMutualFund> nsdlMfList = camsData.getFundInfoList().stream()
+				.map(mf -> new NSDLMutualFund(mf.getRtCode(), mf.getSchemeName(), mf.getClosingBalance().floatValue(),
+						mf.getValuation()))
+				.collect(Collectors.toList());
+		nsdlReponse.setNsdlMutualFunds(nsdlMfList);
+
+		List<NSDLValueTrend> valuetrend = new ArrayList<NSDLValueTrend>();
+		nsdlReponse.setNsdlValueTrend(valuetrend);
+		NSDLAssetAmount nsdlAssetAmount = new NSDLAssetAmount();
+		nsdlAssetAmount.setMutualFundFolios(Double.valueOf(mfTotalAmount).longValue());
+		nsdlReponse.setNsdlAssetAmount(nsdlAssetAmount);
+		
+		if (nsdlReponse.getNsdlMutualFunds().size() > 0)
+			getAnalysisData(nsdlReponse, camsData.getHolderInfo().getEmail(), camsFile.getOriginalFilename(), password);
+
+		return nsdlReponse;
+	}
+
+	private void getAnalysisData(NSDLReponse nsdlReponse, String email, String fileName, String password) {
+		LOG.info("Inside getAnalysisData for cams file " + fileName);
+		// map rtcode from cams with their corresponding isin
+		String equityMFRtCodeList = nsdlReponse.getNsdlMutualFunds().stream().map(NSDLMutualFund::getIsin)
+				.collect(Collectors.joining(","));
+		FundDataList fundDataList = getSchemeDetails(equityMFRtCodeList);
+
+		for (NSDLMutualFund mf : nsdlReponse.getNsdlMutualFunds()) {
+			FundDataResponse fdResponse = fundDataList.getResponse().stream()
+					.filter(x -> x.getData() != null && StringUtils.isNotEmpty(x.getData().getRtcode())
+							&& x.getData().getRtcode().equalsIgnoreCase(mf.getIsin()))
+					.findFirst().orElse(null);
+			if (fdResponse != null && StringUtils.isNoneEmpty(fdResponse.getData().getIsin())) 
+				mf.setIsin(fdResponse.getData().getIsin());
+			if (fdResponse != null && StringUtils.isNoneEmpty(fdResponse.getData().getSchemenamecmapis()))
+				mf.setIsinDescription(fdResponse.getData().getSchemenamecmapis());
+
+		}
+
+		// Get mutual fund underlying stocks
+		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
+				nsdlReponse.getNsdlMutualFunds());
+		mutualFundAnalysisResponseList.getMfaResponse()
+				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
+		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());
+		nsdlReponse.setMfAnalyzed(mutualFundAnalysisResponseList.getMfAnalyzed());
+		nsdlReponse.setMfNotAnalyzed(mutualFundAnalysisResponseList.getMfNotAnalyzed());
+		nsdlReponse.setMfGrowthAnalysis(mutualFundAnalysisResponseList.getMfGrowthAnalysis());
+
+		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
+				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(),
+						(float) ((m.getAmount()
+								/ (nsdlReponse.getAmount() - mutualFundAnalysisResponseList.getAmountNotAnalyzed()))
+								* 100),
+						(long) m.getAmount(), 0, m.getIndustry()))
+				.collect(Collectors.toList());
+
+		overallStock.sort(Comparator.comparing(OverallStockData::getCurrentValue).reversed());
+
+		nsdlReponse.setOverallStock(overallStock);
+
+		// Calculate mf sector details
+		if (nsdlReponse.getNsdlMutualFunds().size() > 0) {
+
+			Map<String, Double> mfMap = mutualFundAnalysisResponseList.getMfaResponse().stream()
+					.collect(Collectors.groupingBy(mf -> mf.getIndustry().toUpperCase(),
+							Collectors.summingDouble(MutualFundAnalysisResponse::getAmount)));
+
+			Map<String, Double> mfMapSorted = mfMap.entrySet().stream()
+					.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue,
+							LinkedHashMap::new));
+
+			nsdlReponse.setMfSector(mfMapSorted);
+		}
+
+		// Calculate overall sector details
+		if (nsdlReponse.getOverallStock().size() > 0) {
+
+			Map<String, Double> oMap = nsdlReponse.getOverallStock().stream().collect(Collectors.groupingBy(
+					os -> os.getSector().toUpperCase(), Collectors.summingDouble(OverallStockData::getCurrentValue)));
+			Map<String, Double> oMapSorted = oMap.entrySet().stream()
+					.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue,
+							LinkedHashMap::new));
+			nsdlReponse.setOverallSector(oMapSorted);
+		}
+
+		// Get portfolio analysis
+		PortfolioAnalysisReponse portfolioAnalysisReponse = getPortfolioAnalysis(nsdlReponse.getNsdlMutualFunds(),
+				nsdlReponse.getNsdlEquities());
+		nsdlReponse.setPortfolioAnalysis(portfolioAnalysisReponse);
+
+		// Save user data for future
+		asyncService.saveNSDLData(nsdlReponse.getHolderName(), email, fileName, password);
+	}
+
+	private MutualFundAnalysisResponseList getSchemeAnalysis(List<NSDLMutualFund> nsdlMutualFunds) {
+		if (!nsdlMutualFunds.isEmpty()) {
+			LOG.info("API call to POST mutual fund underlying stocks : " + nsdlMutualFunds.size());
+
+			StringBuilder getMFAnalysisURL = new StringBuilder(assetUtil.getProperty("mf.base.url"));
+			getMFAnalysisURL.append(assetUtil.getProperty("mf.analysis.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getMFAnalysisURL.toString())
+					.queryParam("source", "nsdl");
+			MutualFundAnalysis mutualFundAnalysis = new MutualFundAnalysis();
+			List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
+					.map(n -> new MutualFundAnalysisScheme(
+							Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
+							n.getCurrentValue(), n.getIsin().trim()))
+					.collect(Collectors.toList());
+			mutualFundAnalysis.setMfSchemes(mfSchemes);
+			HttpEntity<?> entity = new HttpEntity<>(mutualFundAnalysis, headers);
+
+			ResponseEntity<MutualFundAnalysisResponseList> response = restTemplate
+					.postForEntity(builder.build().toUri(), entity, MutualFundAnalysisResponseList.class);
+
+			LOG.info("API Response for  POST mutual fund underlying stocks : " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new MutualFundAnalysisResponseList();
+	}
+
+	private PortfolioAnalysisReponse getPortfolioAnalysis(List<NSDLMutualFund> nsdlMutualFunds,
+			List<NSDLEquity> nsdlEquities) {
+		LOG.info("API call to POST Portfolio analysis FOR EQUITIES " + nsdlEquities.size() + " and for schemes : "
+				+ nsdlMutualFunds.size());
+
+		PortfolioAnalysisRequest portfolioAnalysisRequest = new PortfolioAnalysisRequest();
+
+		StringBuilder postPorfolioAnalysisURL = new StringBuilder(assetUtil.getProperty("portfolio.base.url"));
+		postPorfolioAnalysisURL.append(assetUtil.getProperty("portfolio.analysis.url.path"));
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+		UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(postPorfolioAnalysisURL.toString())
+				.queryParam("source", "nsdl");
+		MutualFundAnalysis mutualFundAnalysis = new MutualFundAnalysis();
+		List<MutualFundAnalysisScheme> mfSchemes = nsdlMutualFunds.stream()
+				.map(n -> new MutualFundAnalysisScheme(
+						Stream.of(n.getIsinDescription().trim().split("-")).reduce((first, last) -> first).get(),
+						n.getCurrentValue(), n.getIsin().trim()))
+				.collect(Collectors.toList());
+
+		portfolioAnalysisRequest.setMfSchemes(mfSchemes);
+
+		List<Equity> equities = new ArrayList<Equity>();
+		if (nsdlEquities.size() > 0)
+			equities = nsdlEquities.stream().map(n -> new Equity(n.getIsin(), n.getCurrentValue()))
+					.collect(Collectors.toList());
+
+		portfolioAnalysisRequest.setEquities(equities);
+
+		HttpEntity<?> entity = new HttpEntity<>(portfolioAnalysisRequest, headers);
+
+		ResponseEntity<PortfolioAnalysisReponse> response = restTemplate.postForEntity(builder.build().toUri(), entity,
+				PortfolioAnalysisReponse.class);
+		LOG.info("API call to POST Portfolio analysis " + response.getStatusCodeValue());
+		return response.getBody();
+
+	}
+
+	private FundDataList getSchemeDetails(String equityMFRtCodeList) {
+		if (StringUtils.isNoneEmpty(equityMFRtCodeList)) {
+			LOG.info("API call to GET details for mutual funds : " + equityMFRtCodeList);
+			StringBuilder getSchemeURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getSchemeURL.append(assetUtil.getProperty("fund.schemes.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getSchemeURL.toString())
+					.queryParam("rtcode", equityMFRtCodeList);
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<FundDataList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET, entity,
+					FundDataList.class);
+			LOG.info("API Response for GET mutual fund call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new FundDataList();
+	}
 }

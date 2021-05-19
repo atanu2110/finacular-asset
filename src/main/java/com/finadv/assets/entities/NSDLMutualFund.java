@@ -14,6 +14,18 @@ public class NSDLMutualFund {
 
 	private double currentValue;
 
+	public NSDLMutualFund() {
+		
+	}
+	
+	public NSDLMutualFund(String isin, String isinDescription, float units, double currentValue) {
+		super();
+		this.isin = isin;
+		this.isinDescription = isinDescription;
+		this.units = units;
+		this.currentValue = currentValue;
+	}
+
 	public String getIsin() {
 		return isin;
 	}

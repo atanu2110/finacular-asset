@@ -51,7 +51,7 @@ public class ExtractController {
 	public ResponseEntity<String> extractMFDataFromCAMSFile(@RequestParam("camsFile") MultipartFile camsFile,
 			@RequestParam("password") String password, @RequestParam("userId") Long userId) {
 		try {
-			return ResponseEntity.ok(camsService.extractMFData(camsFile, password, userId));
+			return ResponseEntity.ok(camsService.extractMFData(camsFile, password, userId,"portal"));
 		} catch (IOException e) {
 			// log.error(e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -95,13 +95,19 @@ public class ExtractController {
 			@RequestParam("userId") Long userId, @RequestParam("source") String source) throws IOException {
 		switch (fileType) {
 		case "cams":
-			return ResponseEntity.ok(camsService.extractMFData(file, password, userId));
+			if("portal".equalsIgnoreCase(source))
+				return ResponseEntity.ok(camsService.extractMFData(file, password, userId,source));
+			else
+				return ResponseEntity.ok(camsService.portfolioAnalyzeCAMS(file, password, userId,source));
 		case "nsdl":
 			return ResponseEntity.ok(nsdlService.extractFromNSDL(file, password, userId, source));
 		case "cdsl":
 			return ResponseEntity.ok(cdslService.extractFromCDSL(file, password, userId, source));
 		case "zerodha":
-			return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(file, userId, source));
+			if("portal".equalsIgnoreCase(source))
+				return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(file, userId, source));
+			else
+				return ResponseEntity.ok(zerodhaService.portfolioAnalyzeFromZerodhaExcel(file, userId, source));
 		default:
 			return new ResponseEntity<>("Invalid File type !!", HttpStatus.BAD_REQUEST);
 		}
