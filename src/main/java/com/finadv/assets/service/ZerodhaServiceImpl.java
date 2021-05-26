@@ -36,6 +36,7 @@ import com.finadv.assets.entities.MutualFundAnalysis;
 import com.finadv.assets.entities.MutualFundAnalysisResponse;
 import com.finadv.assets.entities.MutualFundAnalysisResponseList;
 import com.finadv.assets.entities.MutualFundAnalysisScheme;
+import com.finadv.assets.entities.MutualFundGrowthAnalysis;
 import com.finadv.assets.entities.NSDLAssetAmount;
 import com.finadv.assets.entities.NSDLEquity;
 import com.finadv.assets.entities.NSDLMutualFund;
@@ -81,7 +82,7 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		LOG.info("Inside  extractFromZerodhaExcel for source : " + source + "  and userId : " + userId);
 		ZerodhaResponse zerodhaResponse = new ZerodhaResponse();
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
-		readExcel(excelFile, userId, zerodhaResponse, userAssetList);
+		readExcel(excelFile, userId, zerodhaResponse, userAssetList, null);
 
 		// Saving the User Data
 		String nick = zerodhaResponse.getClientId();
@@ -95,66 +96,128 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 	}
 
 	private void readExcel(MultipartFile excelFile, Long userId, ZerodhaResponse zerodhaResponse,
-			List<UserAssets> userAssetList) {
+			List<UserAssets> userAssetList, String email) {
 		LOG.info("Inside  readExcel for Zerodha for userId : " + userId);
+		
+		//store file to s3
+		asyncService.uploadMultipartFile(excelFile, "zerodha");
 		try {
 			XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
 
 			List<NSDLEquity> nsdlEquities = new ArrayList<NSDLEquity>();
 			List<NSDLMutualFund> mutualFunds = new ArrayList<NSDLMutualFund>();
 			// List<UserAssets> userAssetList = new ArrayList<UserAssets>();
-
+			
+			//Read Equities
 			XSSFSheet worksheet = workbook.getSheetAt(0);
+			int rowNum = worksheet.getLastRowNum()+1;
+		  			
+			for(int i=0 ; i < rowNum; i++) {
+			
+				XSSFRow currentRow = worksheet.getRow(i);	
+				
+				// Get zerodha client id
+				if(currentRow != null && currentRow.getCell(1) != null && currentRow.getCell(1).toString().equalsIgnoreCase("Client ID") && currentRow.getCell(2) != null) {
+					zerodhaResponse.setClientId(currentRow.getCell(2).toString());
+					
+				}
+				// Get report period
+				if(currentRow != null && currentRow.getCell(1) != null && currentRow.getCell(1).toString().contains("Statement as on")) {		
+					zerodhaResponse
+					.setPeriod((Stream.of(currentRow.getCell(1).toString().split(" ")).reduce((first, last) -> last).get()));
+					
+				}
+				//Get equities
+				if(currentRow != null &&  currentRow.getCell(1) != null && currentRow.getCell(2) != null &&
+						(currentRow.getCell(2).toString().trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || currentRow.getCell(2).toString().trim().matches("^(INE).*"))) {
+					NSDLEquity nsdlEquity = new NSDLEquity();
+					nsdlEquity.setIsin(currentRow.getCell(2).toString());
+					nsdlEquity.setStockSymbol(currentRow.getCell(1).toString());
+					nsdlEquity.setShares((long) Double.parseDouble(currentRow.getCell(4).toString()));
+					nsdlEquity.setCurrentValue(Double.parseDouble(currentRow.getCell(10).toString()) * nsdlEquity.getShares());
 
-			// Get Client Id
-			XSSFRow row = worksheet.getRow(6);
-			String clientId = row.getCell(2).toString();
-			zerodhaResponse.setClientId(clientId);
-			;
-
-			// Get period
-			row = worksheet.getRow(10);
-			zerodhaResponse
-					.setPeriod((Stream.of(row.getCell(1).toString().split(" ")).reduce((first, last) -> last).get()));
-			;
-
-			// Get all Equities
-			for (int i = 15; i <= worksheet.getLastRowNum(); i++) {
-				NSDLEquity nsdlEquity = new NSDLEquity();
-
-				XSSFRow tempRow = worksheet.getRow(i);
-
-				nsdlEquity.setIsin(tempRow.getCell(2).toString());
-				nsdlEquity.setStockSymbol(tempRow.getCell(1).toString());
-				nsdlEquity.setShares((long) Double.parseDouble(tempRow.getCell(4).toString()));
-				nsdlEquity.setCurrentValue(Double.parseDouble(tempRow.getCell(10).toString()) * nsdlEquity.getShares());
-
-				nsdlEquities.add(nsdlEquity);
-				createAssetForEquities(nsdlEquity, userId, userAssetList, zerodhaResponse.getClientId());
+					nsdlEquities.add(nsdlEquity);
+					createAssetForEquities(nsdlEquity, userId, userAssetList, zerodhaResponse.getClientId());
+				}
+				
 			}
-
+			
+			
 			// Mutual Fund Data
 			worksheet = workbook.getSheetAt(1);
+			rowNum = worksheet.getLastRowNum()+1;
+		     
+		      
+		      for(int i=0 ; i < rowNum; i++) {
+					XSSFRow currentRow = worksheet.getRow(i);
+					//Get mutual funds
+					if(currentRow != null && currentRow.getCell(1) != null && currentRow.getCell(2) != null &&
+							(currentRow.getCell(2).toString().trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || currentRow.getCell(2).toString().trim().matches("^(INF).*"))) {
+						NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
+						String schemeSymbol = currentRow.getCell(1).toString();
+						nsdlMutualFund.setIsin(currentRow.getCell(2).toString());
+						nsdlMutualFund.setUnits(Float.parseFloat(currentRow.getCell(4).toString()));
+						nsdlMutualFund
+								.setCurrentValue(Double.parseDouble(currentRow.getCell(9).toString()) * nsdlMutualFund.getUnits());
+						nsdlMutualFund.setIsinDescription(schemeSymbol);
 
-			for (int i = 15; i <= worksheet.getLastRowNum(); i++) {
-				NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
-
-				XSSFRow tempRow = worksheet.getRow(i);
-
-				String schemeSymbol = tempRow.getCell(1).toString();
-				nsdlMutualFund.setIsin(tempRow.getCell(2).toString());
-				nsdlMutualFund.setUnits(Float.parseFloat(tempRow.getCell(4).toString()));
-				nsdlMutualFund
-						.setCurrentValue(Double.parseDouble(tempRow.getCell(9).toString()) * nsdlMutualFund.getUnits());
-				nsdlMutualFund.setIsinDescription(schemeSymbol);
-
-				mutualFunds.add(nsdlMutualFund);
-				createAssetForMutualFund(nsdlMutualFund, schemeSymbol, userId, userAssetList,
-						zerodhaResponse.getClientId());
-			}
+						mutualFunds.add(nsdlMutualFund);
+						createAssetForMutualFund(nsdlMutualFund, schemeSymbol, userId, userAssetList,
+								zerodhaResponse.getClientId());
+					}
+				}
+					
+		      
+		      
+			// Get Client Id
+			/*
+			 * XSSFRow row = worksheet.getRow(6); String clientId =
+			 * row.getCell(2).toString(); zerodhaResponse.setClientId(clientId); ;
+			 * 
+			 * // Get period row = worksheet.getRow(10); zerodhaResponse
+			 * .setPeriod((Stream.of(row.getCell(1).toString().split(" ")).reduce((first,
+			 * last) -> last).get())); ;
+			 * 
+			 * // Get all Equities for (int i = 15; i <= worksheet.getLastRowNum(); i++) {
+			 * NSDLEquity nsdlEquity = new NSDLEquity();
+			 * 
+			 * XSSFRow tempRow = worksheet.getRow(i);
+			 * 
+			 * nsdlEquity.setIsin(tempRow.getCell(2).toString());
+			 * nsdlEquity.setStockSymbol(tempRow.getCell(1).toString());
+			 * nsdlEquity.setShares((long)
+			 * Double.parseDouble(tempRow.getCell(4).toString()));
+			 * nsdlEquity.setCurrentValue(Double.parseDouble(tempRow.getCell(10).toString())
+			 * * nsdlEquity.getShares());
+			 * 
+			 * nsdlEquities.add(nsdlEquity); createAssetForEquities(nsdlEquity, userId,
+			 * userAssetList, zerodhaResponse.getClientId()); }
+			 * 
+			 * // Mutual Fund Data worksheet = workbook.getSheetAt(1);
+			 * 
+			 * for (int i = 15; i <= worksheet.getLastRowNum(); i++) { NSDLMutualFund
+			 * nsdlMutualFund = new NSDLMutualFund();
+			 * 
+			 * XSSFRow tempRow = worksheet.getRow(i);
+			 * 
+			 * String schemeSymbol = tempRow.getCell(1).toString();
+			 * nsdlMutualFund.setIsin(tempRow.getCell(2).toString());
+			 * nsdlMutualFund.setUnits(Float.parseFloat(tempRow.getCell(4).toString()));
+			 * nsdlMutualFund
+			 * .setCurrentValue(Double.parseDouble(tempRow.getCell(9).toString()) *
+			 * nsdlMutualFund.getUnits()); nsdlMutualFund.setIsinDescription(schemeSymbol);
+			 * 
+			 * mutualFunds.add(nsdlMutualFund); createAssetForMutualFund(nsdlMutualFund,
+			 * schemeSymbol, userId, userAssetList, zerodhaResponse.getClientId()); }
+			 */
 
 			zerodhaResponse.setNsdlEquities(nsdlEquities);
 			zerodhaResponse.setNsdlMutualFunds(mutualFunds);
+			
+			// Save user data for future
+			asyncService.saveNSDLData(zerodhaResponse.getClientId(), email, excelFile.getOriginalFilename(), null);
+			
+			
 			LOG.info("Exit  readExcel for Zerodha for userId : " + userId);
 		} catch (IllegalStateException | IOException e) {
 			e.printStackTrace();
@@ -216,11 +279,11 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 	}
 
 	@Override
-	public NSDLReponse portfolioAnalyzeFromZerodhaExcel(MultipartFile excelFile, Long userId, String source) {
+	public NSDLReponse portfolioAnalyzeFromZerodhaExcel(MultipartFile excelFile, Long userId, String source, String email) {
 		LOG.info("Inside  portfolioAnalyzeFromZerodhaExcel for source : " + source + "  and excel : " + excelFile.getOriginalFilename());
 		ZerodhaResponse zerodhaResponse = new ZerodhaResponse();
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
-		readExcel(excelFile, userId, zerodhaResponse, userAssetList);
+		readExcel(excelFile, userId, zerodhaResponse, userAssetList, email);
 
 		NSDLReponse nsdlReponse = new NSDLReponse();
 		nsdlReponse.setPeriod(zerodhaResponse.getPeriod());
@@ -255,6 +318,15 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		// Get mutual fund underlying stocks
 		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
 				nsdlReponse.getNsdlMutualFunds());
+		if(mutualFundAnalysisResponseList.getMfaResponse() == null) 
+			mutualFundAnalysisResponseList.setMfaResponse(new ArrayList<MutualFundAnalysisResponse>());
+		if(mutualFundAnalysisResponseList.getMfAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfNotAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfNotAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfGrowthAnalysis()== null) 
+			mutualFundAnalysisResponseList.setMfGrowthAnalysis(new ArrayList<MutualFundGrowthAnalysis>());
+			
 		mutualFundAnalysisResponseList.getMfaResponse()
 				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
 		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());
@@ -271,7 +343,8 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 			// Calculate sector details for equities
 			calculateSectorForEquities(nsdlReponse.getNsdlEquities(), stockDataList, nsdlReponse);
 		}
-
+		
+		
 		List<OverallStockData> overallStock = mutualFundAnalysisResponseList.getMfaResponse().stream()
 				.map(m -> new OverallStockData(m.getSymbol(), m.getAmount(),
 						(float) ((m.getAmount()
@@ -349,8 +422,8 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		nsdlReponse.setPortfolioAnalysis(portfolioAnalysisReponse);
 
 		// Save user data for future
-		asyncService.saveNSDLData(nsdlReponse.getHolderName(), "", "zerodha-"+originalFilename,
-		 "");
+		//asyncService.saveNSDLData(nsdlReponse.getHolderName(), "", "zerodha-"+originalFilename,
+		// "");
 	}
 
 	private MutualFundAnalysisResponseList getSchemeAnalysis(List<NSDLMutualFund> nsdlMutualFunds) {

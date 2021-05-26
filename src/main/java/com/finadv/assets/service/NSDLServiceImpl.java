@@ -45,6 +45,7 @@ import com.finadv.assets.entities.MutualFundAnalysis;
 import com.finadv.assets.entities.MutualFundAnalysisResponse;
 import com.finadv.assets.entities.MutualFundAnalysisResponseList;
 import com.finadv.assets.entities.MutualFundAnalysisScheme;
+import com.finadv.assets.entities.MutualFundGrowthAnalysis;
 import com.finadv.assets.entities.NSDLAssetAmount;
 import com.finadv.assets.entities.NSDLEquity;
 import com.finadv.assets.entities.NSDLMutualFund;
@@ -90,7 +91,7 @@ public class NSDLServiceImpl implements NSDLService {
 	private AssetUtil assetUtil;
 
 	@Override
-	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId, String source) {
+	public NSDLReponse extractFromNSDL(MultipartFile nsdlFile, String password, Long userId, String source) throws IOException {
 		String temDirectory = "java.io.tmpdir";
 		/*
 		 * Path path = Paths.get(temDirectory + "/finacular"); if (!Files.exists(path))
@@ -104,7 +105,7 @@ public class NSDLServiceImpl implements NSDLService {
 
 		File tempNSDLFile = new File(System.getProperty(temDirectory) + "/" + nsdlFile.getOriginalFilename() + "-" + password
 				+ RandomStringUtils.random(4, true, true));
-		PDDocument doc;
+		PDDocument doc = null;
 
 		NSDLReponse nsdlReponse = new NSDLReponse();
 		List<UserAssets> userAssetList = new ArrayList<UserAssets>();
@@ -357,7 +358,7 @@ public class NSDLServiceImpl implements NSDLService {
 			nsdlReponse.setNsdlValueTrend(valuetrend);
 			nsdlReponse.setNsdlMutualFunds(mutualFunds);
 			doc.close();
-			// Delete file
+			// Delete file, Not deleting as temporarily storing file in AWS S3
 			// FileUtils.deleteQuietly(tempNSDLFile);
 			if ("portal".equalsIgnoreCase(source) && !userAssetList.isEmpty()) {
 				String nick = email.trim().replaceAll(" ", "").toLowerCase();
@@ -371,6 +372,9 @@ public class NSDLServiceImpl implements NSDLService {
 			}
 		} catch (IllegalStateException | IOException e) {
 			throw new RestServiceException(HttpStatus.BAD_REQUEST, e);
+		}finally {
+			if (doc != null)
+				doc.close();
 		}
 		
 		return nsdlReponse;
@@ -441,6 +445,14 @@ public class NSDLServiceImpl implements NSDLService {
 		// Get mutual fund underlying stocks
 		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
 				nsdlReponse.getNsdlMutualFunds());
+		if(mutualFundAnalysisResponseList.getMfaResponse() == null) 
+			mutualFundAnalysisResponseList.setMfaResponse(new ArrayList<MutualFundAnalysisResponse>());
+		if(mutualFundAnalysisResponseList.getMfAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfNotAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfNotAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfGrowthAnalysis()== null) 
+			mutualFundAnalysisResponseList.setMfGrowthAnalysis(new ArrayList<MutualFundGrowthAnalysis>());
 		mutualFundAnalysisResponseList.getMfaResponse()
 				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
 		nsdlReponse.setMfaResponse(mutualFundAnalysisResponseList.getMfaResponse());

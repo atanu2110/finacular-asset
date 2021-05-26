@@ -72,7 +72,7 @@ public class ExtractController {
 	
 	@PostMapping(path = "/nsdl")
 	public ResponseEntity<NSDLReponse> extractFromNSDL(@RequestParam("nsdlFile") MultipartFile nsdlFile,
-			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) {
+			@RequestParam("password") String password, @RequestParam("userId") Long userId , @RequestParam("source") String source) throws IOException {
 		return ResponseEntity.ok(nsdlService.extractFromNSDL(nsdlFile, password, userId , source));
 	}
 	
@@ -107,7 +107,7 @@ public class ExtractController {
 			if("portal".equalsIgnoreCase(source))
 				return ResponseEntity.ok(zerodhaService.extractFromZerodhaExcel(file, userId, source));
 			else
-				return ResponseEntity.ok(zerodhaService.portfolioAnalyzeFromZerodhaExcel(file, userId, source));
+				return ResponseEntity.ok(zerodhaService.portfolioAnalyzeFromZerodhaExcel(file, userId, source, password));
 		default:
 			return new ResponseEntity<>("Invalid File type !!", HttpStatus.BAD_REQUEST);
 		}

@@ -134,17 +134,29 @@ public class AsyncService {
 	@Async
 	public void uploadFile(File uploadedFile, String fileType) {
 		LOG.info("Inside uploadFile : Upload file to S3 for record!!");
-		//File file = convertMultiPartFileToFile(multipartFile);
+		// File file = convertMultiPartFileToFile(multipartFile);
 		uploadFileToS3bucket(uploadedFile, "finacular-files", fileType);
-		//Delete the file
+		// Delete the file
 		FileUtils.deleteQuietly(uploadedFile);
 	}
 
 	private void uploadFileToS3bucket(File file, String bucketName, String fileType) {
-		amazonS3Client.putObject(new PutObjectRequest(bucketName, fileType +"/" + file.getName(), file));
+		amazonS3Client.putObject(new PutObjectRequest(bucketName, fileType + "/" + file.getName(), file));
 
 	}
 
+	//@Async
+	public void uploadMultipartFile(MultipartFile uploadedFile, String fileType) {
+		LOG.info("Inside uploadMultipartFile : Upload file to S3 for record!!");
+		File file = convertMultiPartFileToFile(uploadedFile);
+		final PutObjectRequest putObjectRequest = new PutObjectRequest("finacular-files", "zerodha/" + file.getName(),
+				file);
+		amazonS3Client.putObject(putObjectRequest);
+		// Delete the file
+		FileUtils.deleteQuietly(file);
+	}
+
+	//@Async
 	private File convertMultiPartFileToFile(MultipartFile file) {
 		File convertedFile = new File(file.getOriginalFilename());
 		try (FileOutputStream fos = new FileOutputStream(convertedFile)) {
@@ -154,4 +166,5 @@ public class AsyncService {
 		}
 		return convertedFile;
 	}
+
 }

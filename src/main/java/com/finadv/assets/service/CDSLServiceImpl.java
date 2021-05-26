@@ -39,6 +39,7 @@ import com.finadv.assets.entities.MutualFundAnalysis;
 import com.finadv.assets.entities.MutualFundAnalysisResponse;
 import com.finadv.assets.entities.MutualFundAnalysisResponseList;
 import com.finadv.assets.entities.MutualFundAnalysisScheme;
+import com.finadv.assets.entities.MutualFundGrowthAnalysis;
 import com.finadv.assets.entities.NSDLAssetAmount;
 import com.finadv.assets.entities.NSDLEquity;
 import com.finadv.assets.entities.NSDLMutualFund;
@@ -526,7 +527,14 @@ public class CDSLServiceImpl implements CDSLService {
 		//System.out.println("1");
 		MutualFundAnalysisResponseList mutualFundAnalysisResponseList = getSchemeAnalysis(
 				nsdlReponse.getNsdlMutualFunds());
-		//System.out.println("2");
+		if(mutualFundAnalysisResponseList.getMfaResponse() == null) 
+			mutualFundAnalysisResponseList.setMfaResponse(new ArrayList<MutualFundAnalysisResponse>());
+		if(mutualFundAnalysisResponseList.getMfAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfNotAnalyzed() == null) 
+			mutualFundAnalysisResponseList.setMfNotAnalyzed(new ArrayList<String>());
+		if(mutualFundAnalysisResponseList.getMfGrowthAnalysis()== null) 
+			mutualFundAnalysisResponseList.setMfGrowthAnalysis(new ArrayList<MutualFundGrowthAnalysis>());
 		mutualFundAnalysisResponseList.getMfaResponse()
 				.sort(Comparator.comparing(MutualFundAnalysisResponse::getAmount).reversed());
 		//System.out.println("3");

@@ -9,5 +9,5 @@ public interface ZerodhaService {
 
 	public ZerodhaResponse extractFromZerodhaExcel(MultipartFile excelFile, Long userId, String source);
 	
-	public NSDLReponse portfolioAnalyzeFromZerodhaExcel(MultipartFile excelFile, Long userId, String source);
+	public NSDLReponse portfolioAnalyzeFromZerodhaExcel(MultipartFile excelFile, Long userId, String source, String email);
 }

@@ -118,30 +118,32 @@ public class CAMSServiceImpl implements CAMSService {
 	 * 
 	 * @param camsFile the multipart cams file.
 	 * @param password file password
-	 * @throws JsonProcessingException
 	 * @throws IOException             exception on parsing pdf.
 	 */
 	@Override
 	public String extractMFData(MultipartFile camsFile, String password, Long userId, String source)
-			throws JsonProcessingException {
+			throws IOException {
 		LOG.info("Inside extractMFData for cams userId " + userId);
 		String temDirectory = "java.io.tmpdir";
 		File tempCAMSFile = new File(System.getProperty(temDirectory) + "/" + camsFile.getOriginalFilename() + "-"
 				+ password + RandomStringUtils.random(4, true, true));
 		CAMS camsData = new CAMS();
+		 PDDocument pdDoc = null;
+		 COSDocument cosDoc = null;
+		 RandomAccessRead rar = null;
 		try {
 			camsFile.transferTo(tempCAMSFile);
 			// Store file in S3
 			asyncService.uploadFile(tempCAMSFile, "cams");
 
-			RandomAccessRead rar = new RandomAccessFile(tempCAMSFile, READ_MODE);
+			rar = new RandomAccessFile(tempCAMSFile, READ_MODE);
 			PDFParser parser = new PDFParser(rar, password);
 
 			parser.parse();
-			COSDocument cosDoc = parser.getDocument();
+			cosDoc = parser.getDocument();
 			PDFTextStripper pdfStripper = new PDFLayoutTextStripper();
 			pdfStripper.setAddMoreFormatting(false);
-			PDDocument pdDoc = new PDDocument(cosDoc);
+			pdDoc = new PDDocument(cosDoc);
 			pdDoc.setAllSecurityToBeRemoved(true);
 
 			String parsedText = pdfStripper.getText(pdDoc);
@@ -312,17 +314,26 @@ public class CAMSServiceImpl implements CAMSService {
 				assetService.saveUserAssetsByUserId(userAsset, "cams");
 			}
 
-			tempCAMSFile.delete();
+			
 			rar.close();
 			cosDoc.close();
 			pdDoc.close();
-
+			//Not deleting as temporarily storing file in AWS S3
+			//tempCAMSFile.delete();
 			LOG.info("Exit extractMFData for cams userId " + userId);
 
 			return new ObjectMapper().writeValueAsString(camsData);
 
 		} catch (IllegalStateException | IOException e) {
 			throw new RestServiceException(HttpStatus.BAD_REQUEST, e);
+		}finally {
+			if (rar != null)
+			rar.close();
+			if (cosDoc != null)
+			cosDoc.close();
+			if (pdDoc != null)
+			pdDoc.close();
+			//tempCAMSFile.delete();
 		}
 
 	}
