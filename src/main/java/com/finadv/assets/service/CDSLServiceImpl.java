@@ -423,8 +423,9 @@ public class CDSLServiceImpl implements CDSLService {
 								}
 								if (nsdlMutualFund.getIsin()!=null) {
 									mutualFunds.add(nsdlMutualFund);
-									if ("portal".equalsIgnoreCase(source))
-										createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
+									// Temp commented out as we donot use CDSL for mutual fund
+									//if ("portal".equalsIgnoreCase(source))
+									//	createAssetForMutualFund(nsdlMutualFund, userId, userAssetList, nsdlReponse.getHolderName());
 								}
 									
 							}
@@ -478,7 +479,7 @@ public class CDSLServiceImpl implements CDSLService {
 			AssetInstrument assetInstrument = new AssetInstrument();
 			assetInstrument.setId(7);
 			userAssets.setAssetInstrument(assetInstrument);
-			userAssets.setExpectedReturn(10);
+			userAssets.setExpectedReturn(12);
 			userAssets.setEquityDebtName(nsdlEquity.getStockSymbol());
 			userAssets.setCode(nsdlEquity.getIsin());
 			userAssets.setUnits((int) nsdlEquity.getShares());

@@ -110,12 +110,12 @@ public class AssetServiceImpl implements AssetService {
 		this.portfolioHistoryRepository = portfolioHistoryRepository;
 	}
 
-	public static final float CASH_RETURN = 5;
+	public static final float CASH_RETURN = 2;
 	public static final float EQUITY_RETURN = 12;
 	public static final float DEBT_RETURN = 5;
-	public static final float GOV_FUND_RETURN = 8;
-	public static final float REAL_ESTATE_RETURN = 2;
-	public static final float COMMODITIES_RETURN = 10;
+	public static final float GOV_FUND_RETURN = 7;
+	public static final float REAL_ESTATE_RETURN = 5;
+	public static final float COMMODITIES_RETURN = 6;
 
 	@Override
 	public List<AssetInstrument> getAssetDetails() {
@@ -176,6 +176,7 @@ public class AssetServiceImpl implements AssetService {
 				|| "zerodha".equalsIgnoreCase(source)) {
 			Set<Long> assetTypeSet = userAsset.getAssets().stream().map(a -> a.getAssetInstrument().getId())
 					.collect(Collectors.toSet());
+			if(userAsset.getAssets().size() > 0)
 			userAssetRepository.deleteUserAssetByUserIdEmailAndInInstrument(userAsset.getUserId(),
 					userAsset.getAssets().get(0).getNickName(), assetTypeSet);
 
@@ -232,8 +233,8 @@ public class AssetServiceImpl implements AssetService {
 			userAssetRepository.saveAll(userAsset.getAssets());
 		}
 
-		// Async : call to save user investment as investment tracker
-		asyncService.callSaveInvestment(userAsset);
+		// Async : call to save user investment as investment tracker - Temp commented as we donot user investment tracker for now
+	//	asyncService.callSaveInvestment(userAsset);
 	}
 
 	@Override

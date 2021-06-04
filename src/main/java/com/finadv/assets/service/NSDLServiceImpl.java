@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -201,8 +202,12 @@ public class NSDLServiceImpl implements NSDLService {
 						nsdlEquity.setIsin(line.trim());
 						nsdlEquity.setStockSymbol(lines[linecounter + 1].trim());
 						for (int i = 1; i <= 5; i++) {
-							if (lines[linecounter + i + 1].trim().contains(".")
-									|| lines[linecounter + i + 1].trim().contains(",")) {
+							//if (lines[linecounter + i + 1].trim().contains(".")
+								//	|| lines[linecounter + i + 1].trim().contains(",")) {
+							//Pattern ptr = Pattern.compile("/^(\\d+(?:[\\.\\,]\\d{2})?)$/");
+							String[] arrSplit = lines[linecounter + i + 1].trim().split(" ");
+							if(Pattern.matches("^(?!,$)[\\d,.]+$", arrSplit[arrSplit.length - 1])) {
+							//if (lines[linecounter + i + 1].trim().matches("/^(\\d+(?:[\\.\\,]\\d{2})?)$/") ){ 
 								lineSplit = lines[linecounter + i + 1].split(" ");
 								if (lineSplit.length > 2 && !lines[linecounter + i + 1].contains("locked")) {
 									break;
@@ -341,10 +346,12 @@ public class NSDLServiceImpl implements NSDLService {
 					}
 					if (!(Float.parseFloat(lineSplit[lineSplit.length - 1].replaceAll(",", "").trim()) == 0)) {
 						mutualFunds.add(nsdlMutualFund);
-						// Create asset
-						if ("portal".equalsIgnoreCase(source))
-							createAssetForMutualFund(nsdlMutualFund, userId, userAssetList,
-									nsdlReponse.getHolderName());
+						// Create asset - Temp commented out as we do not use NSDL for mutual funds
+						/*
+						 * if ("portal".equalsIgnoreCase(source))
+						 * createAssetForMutualFund(nsdlMutualFund, userId, userAssetList,
+						 * nsdlReponse.getHolderName());
+						 */
 					}
 
 				}
@@ -375,6 +382,8 @@ public class NSDLServiceImpl implements NSDLService {
 		}finally {
 			if (doc != null)
 				doc.close();
+			// Delete the file
+			FileUtils.deleteQuietly(tempNSDLFile);
 		}
 		
 		return nsdlReponse;
@@ -397,7 +406,7 @@ public class NSDLServiceImpl implements NSDLService {
 			AssetInstrument assetInstrument = new AssetInstrument();
 			assetInstrument.setId(7);
 			userAssets.setAssetInstrument(assetInstrument);
-			userAssets.setExpectedReturn(10);
+			userAssets.setExpectedReturn(12);
 			userAssets.setEquityDebtName(nsdlEquity.getStockSymbol());
 			userAssets.setCode(nsdlEquity.getIsin());
 			userAssets.setUnits((int) nsdlEquity.getShares());

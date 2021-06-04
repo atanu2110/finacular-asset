@@ -131,13 +131,13 @@ public class AsyncService {
 
 	}
 
-	@Async
+	//@Async
 	public void uploadFile(File uploadedFile, String fileType) {
 		LOG.info("Inside uploadFile : Upload file to S3 for record!!");
 		// File file = convertMultiPartFileToFile(multipartFile);
 		uploadFileToS3bucket(uploadedFile, "finacular-files", fileType);
 		// Delete the file
-		FileUtils.deleteQuietly(uploadedFile);
+		//FileUtils.deleteQuietly(uploadedFile);
 	}
 
 	private void uploadFileToS3bucket(File file, String bucketName, String fileType) {

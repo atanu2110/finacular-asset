@@ -89,7 +89,12 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 		UserAsset userAsset = new UserAsset();
 		userAsset.setUserId(userId);
 		userAssetList.forEach(ua -> ua.setNickName(nick));
+		
+		// Temp - we remove the mutual fund asset while reading zerodha excel
+		userAssetList.removeIf(u -> u.getAssetInstrument().getId() == 8);
+				
 		userAsset.setAssets(userAssetList);
+		
 		assetService.saveUserAssetsByUserId(userAsset, "zerodha");
 		LOG.info("Exit  extractFromZerodhaExcel for source : " + source + "  and userId : " + userId);
 		return zerodhaResponse;
@@ -241,7 +246,7 @@ public class ZerodhaServiceImpl implements ZerodhaService {
 			AssetInstrument assetInstrument = new AssetInstrument();
 			assetInstrument.setId(7);
 			userAssets.setAssetInstrument(assetInstrument);
-			userAssets.setExpectedReturn(10);
+			userAssets.setExpectedReturn(12);
 			userAssets.setEquityDebtName(nsdlEquity.getStockSymbol());
 			userAssets.setCode(nsdlEquity.getIsin());
 			userAssets.setUnits((int) nsdlEquity.getShares());

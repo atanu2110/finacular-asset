@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.cos.COSDocument;
@@ -333,6 +334,8 @@ public class CAMSServiceImpl implements CAMSService {
 			cosDoc.close();
 			if (pdDoc != null)
 			pdDoc.close();
+			// Delete the file
+			FileUtils.deleteQuietly(tempCAMSFile);
 			//tempCAMSFile.delete();
 		}
 
