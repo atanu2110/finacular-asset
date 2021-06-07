@@ -41,6 +41,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.finadv.assets.dto.UserAssetsDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
@@ -258,7 +259,7 @@ public class CAMSServiceImpl implements CAMSService {
 						}
 						folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
 						folio.setClosingBalance(
-								Double.valueOf(splitLine[splitLine.length - 5].replaceAll("[A-Za-z,]", "").trim()));
+								Double.valueOf(splitLine[splitLine.length - 5].replaceAll("[A-Za-z,()-]", "").trim()));
 						folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
 
 						StringBuffer name = new StringBuffer();
@@ -395,6 +396,7 @@ public class CAMSServiceImpl implements CAMSService {
 		NSDLReponse nsdlReponse = new NSDLReponse();
 		String data = extractMFData(camsFile, password, userId, source);
 		ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		CAMS camsData = objectMapper.readValue(data, CAMS.class);
 
 		// Analyse Mutual fund portfolio for the user
