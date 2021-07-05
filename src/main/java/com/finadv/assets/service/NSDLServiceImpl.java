@@ -198,7 +198,7 @@ public class NSDLServiceImpl implements NSDLService {
 				String[] extralineSplit = new String[0];
 				if (line.trim().matches("^(INE)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INE).*")) {
 					NSDLEquity nsdlEquity = new NSDLEquity();
-					if (lines[linecounter + 1].contains("NSE") || lines[linecounter + 1].contains("BSE")) {
+					if (lines[linecounter + 1].contains("NSE") || lines[linecounter + 1].contains("BSE") || lines[linecounter + 1].contains("NOT LISTED") ) {
 						nsdlEquity.setIsin(line.trim());
 						nsdlEquity.setStockSymbol(lines[linecounter + 1].trim());
 						for (int i = 1; i <= 5; i++) {
@@ -280,7 +280,7 @@ public class NSDLServiceImpl implements NSDLService {
 				// Get all mutual fund details
 
 				if ((line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$") || line.trim().matches("^(INF).*"))
-						&& !line.trim().contains("INFRA") && flagReadERAndCommission) {
+						&& !line.trim().contains("INFRA") && flagReadERAndCommission && !line.trim().contains("INFY")) {
 					NSDLMutualFund nsdlMutualFund = new NSDLMutualFund();
 					if (line.trim().matches("^(INF)[a-zA-Z0-9]{9,}$")) {
 						nsdlMutualFund.setIsin(line.trim());
@@ -331,7 +331,7 @@ public class NSDLServiceImpl implements NSDLService {
 
 						}
 
-						for (int i = 8; i <= 12; i++) {
+						for (int i = 1 ; i <= 12; i++) {
 							if (lines[linecounter + i + 1].trim().contains("Total")
 									|| lines[linecounter + i + 1].trim().matches("^(INF).*")
 									|| lines[linecounter + i + 1].trim().contains("Consolidated Account Statement")) {
