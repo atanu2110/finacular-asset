@@ -32,6 +32,8 @@ import com.finadv.assets.dto.UserAssetOverviewDto;
 import com.finadv.assets.dto.UserAssetsDto;
 import com.finadv.assets.entities.AssetInstrument;
 import com.finadv.assets.entities.AssetType;
+import com.finadv.assets.entities.Crypto;
+import com.finadv.assets.entities.CryptoList;
 import com.finadv.assets.entities.CurrentAsset;
 import com.finadv.assets.entities.CurrentGrowthRequest;
 import com.finadv.assets.entities.CurrentGrowthResponse;
@@ -332,6 +334,12 @@ public class AssetServiceImpl implements AssetService {
 		StockDataList stockDataList = getStockDetails(equityStockISINList);
 		// long[] instrumentIds = { 1, 2, 3, 4, 9, 10, 11 };
 
+		// Get crypto symbol list
+		String cryptoSymbolList = userAssetDto.getAssets().stream()
+				.filter(a -> a.getAssetType().getId() == 6 && a.getAssetInstrument().getId() == 17)
+				.map(UserAssetsDto::getCode).collect(Collectors.joining(","));
+		CryptoList cryptoList = getCryptoDetails(cryptoSymbolList);
+
 		List<UserAssetOverviewDto> assetOverview = new ArrayList<UserAssetOverviewDto>();
 
 		for (UserAssetsDto uaDto : userAssetDto.getAssets()) {
@@ -393,6 +401,14 @@ public class AssetServiceImpl implements AssetService {
 				if (stockData != null && stockData.getNav() != 0.0) {
 					uaDto.setCurrentValue(stockData.getNav() * uaDto.getUnits());
 					uaDto.setEquityDebtName(stockData.getCompanyname());
+				}
+			} else if (uaDto.getAssetInstrument().getId() == 17 && cryptoList.getCrypto_data() != null) {
+				Crypto crypto = cryptoList.getCrypto_data().stream()
+						.filter(x -> x.getSymbol() != null && x.getSymbol().equals(uaDto.getCode())).findFirst()
+						.orElse(null);
+				if (crypto != null && crypto.getValue() != 0.0) {
+					uaDto.setCurrentValue(crypto.getValue() * Double.parseDouble(uaDto.getDetails()));
+					
 				}
 			} /*
 				 * else { Period period = Period.between(uaDto.getUpdatedAt() == null ?
@@ -513,6 +529,30 @@ public class AssetServiceImpl implements AssetService {
 
 		}
 		return new StockDataList();
+	}
+	
+	private CryptoList getCryptoDetails(String cryptoList) {
+		if (StringUtils.isNoneEmpty(cryptoList)) {
+			LOG.info("API call to GET details for cryptocurrency : " + cryptoList);
+
+			StringBuilder getCryptoURL = new StringBuilder(assetUtil.getProperty("fund.base.url"));
+			getCryptoURL.append(assetUtil.getProperty("fund.crypto.url.path"));
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getCryptoURL.toString())
+					.queryParam("symbols", cryptoList);
+
+			HttpEntity<?> entity = new HttpEntity<>(headers);
+
+			ResponseEntity<CryptoList> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET, entity,
+					CryptoList.class);
+			LOG.info("API Response for GET cryptocurrency call " + response.getStatusCodeValue());
+			return response.getBody();
+
+		}
+		return new CryptoList();
 	}
 
 	private void getCurrentAmount(double rate, double principal, UserAssetsDto uaDto) {
