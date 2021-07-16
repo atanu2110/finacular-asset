@@ -258,8 +258,12 @@ public class CAMSServiceImpl implements CAMSService {
 							folio.setRtCode((Stream.of(splitLine[1].split("-")).reduce((first, last) -> first).get()));
 						}
 						folio.setValuation(Double.valueOf(splitLine[splitLine.length - 2].replaceAll(",", "").trim()));
-						folio.setClosingBalance(
-								Double.valueOf(splitLine[splitLine.length - 5].replaceAll("[A-Za-z,()-]", "").trim()));
+						/*
+						 * if(StringUtils.isNoneEmpty(splitLine[splitLine.length -
+						 * 5].replaceAll("[A-Za-z,()-]", "").trim())) folio.setClosingBalance(
+						 * Double.valueOf(splitLine[splitLine.length - 5].replaceAll("[A-Za-z,()-]",
+						 * "").trim()));
+						 */
 						folio.setNav(Double.valueOf(splitLine[splitLine.length - 3].replaceAll(",", "").trim()));
 
 						StringBuffer name = new StringBuffer();
