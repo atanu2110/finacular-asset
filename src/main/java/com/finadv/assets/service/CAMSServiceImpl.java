@@ -247,7 +247,7 @@ public class CAMSServiceImpl implements CAMSService {
 					FundInfo folio = new FundInfo();
 					if (linesList.get(i).trim().contains("Total"))
 						break;
-					if (linesList.get(i).trim().matches("^[0-9].*$")) {
+					if (linesList.get(i).trim().matches("^[0-9].*$") && (linesList.get(i).contains("CAMS") || linesList.get(i).contains("KFINTECH"))) {
 						String[] splitLine = linesList.get(i).trim().split("\\s+");
 						folio.setFolioName(splitLine[0]);
 						if (splitLine[splitLine.length - 1].contains("KFINTECH")) {
