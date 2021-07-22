@@ -421,7 +421,7 @@ public class AssetServiceImpl implements AssetService {
 					+ uaDto.getAssetInstrument().getInstrumentName();
 			int indexMatch = -1;
 			if (uaDto.getAssetType().getId() != 1 && uaDto.getAssetType().getId() != 2
-					&& uaDto.getAssetType().getId() != 4) {
+					&& uaDto.getAssetType().getId() != 4 && uaDto.getAssetInstrument().getId() != 17) {
 				indexMatch = IntStream.range(0, assetOverview.size()).filter(
 						i -> assetOverview.get(i).getType().equalsIgnoreCase(uaDto.getAssetType().getTypeName()))
 						.findFirst().orElse(-1);
